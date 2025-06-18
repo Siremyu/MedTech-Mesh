@@ -1,35 +1,32 @@
 "use client"
 
 import * as React from "react"
+import { useSelector } from 'react-redux'
+import { RootState } from '@/lib/store'
 import { Upload, Plus, X, FileArchive } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 
-interface ModelFile {
-  file: File
-  type: 'image' | '3d'
-  preview?: string
-}
-
-interface ModelPicturesSectionProps {
+interface EditModelPicturesSectionProps {
   onCoverChange: (file: File | null) => void
   onPicturesChange: (files: File[]) => void
-  onModelFileChange?: (file: File | null) => void // Add for 3D file
+  onModelFileChange?: (file: File | null) => void
 }
 
-export function ModelPicturesSection({ 
+export function EditModelPicturesSection({ 
   onCoverChange, 
   onPicturesChange,
   onModelFileChange 
-}: ModelPicturesSectionProps) {
+}: EditModelPicturesSectionProps) {
+  const { originalData } = useSelector((state: RootState) => state.edit)
   const [coverImage, setCoverImage] = React.useState<File | null>(null)
   const [modelPictures, setModelPictures] = React.useState<File[]>([])
-  const [modelFile, setModelFile] = React.useState<File | null>(null) // Add 3D model file state
+  const [modelFile, setModelFile] = React.useState<File | null>(null)
   const coverInputRef = React.useRef<HTMLInputElement>(null)
   const picturesInputRef = React.useRef<HTMLInputElement>(null)
-  const modelFileInputRef = React.useRef<HTMLInputElement>(null) // Add ref for 3D file input
+  const modelFileInputRef = React.useRef<HTMLInputElement>(null)
 
   const handleCoverChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0] || null
@@ -44,7 +41,6 @@ export function ModelPicturesSection({
     onPicturesChange(updatedPictures)
   }
 
-  // Add 3D model file handler
   const handleModelFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0] || null
     setModelFile(file)
@@ -57,7 +53,6 @@ export function ModelPicturesSection({
     onPicturesChange(updatedPictures)
   }
 
-  // Add remove 3D model function
   const removeModelFile = () => {
     setModelFile(null)
     onModelFileChange?.(null)
@@ -70,12 +65,10 @@ export function ModelPicturesSection({
     return URL.createObjectURL(file)
   }
 
-  // Get file extension for display
   const getFileExtension = (filename: string) => {
     return filename.split('.').pop()?.toUpperCase()
   }
 
-  // Format file size
   const formatFileSize = (bytes: number) => {
     if (bytes === 0) return '0 Bytes'
     const k = 1024
@@ -115,6 +108,9 @@ export function ModelPicturesSection({
               <>
                 <Upload className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
                 <p className="text-sm text-muted-foreground">4:3 Cover</p>
+                {originalData?.coverUrl && (
+                  <p className="text-xs text-blue-600 mt-2">Previous cover available</p>
+                )}
               </>
             )}
           </div>
@@ -149,12 +145,12 @@ export function ModelPicturesSection({
             
             {/* Upload 3D Model */}
             <div 
-              className="border-2 border-dashed border-blue-300 rounded-lg p-8 text-center cursor-pointer hover:border-blue-500 transition-colors w-[162px] aspect-[1189/669] flex flex-col items-center justify-center relative"
+              className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-8 text-center cursor-pointer hover:border-blue-500 transition-colors w-[162px] aspect-[1189/669] flex flex-col items-center justify-center relative"
               onClick={() => modelFileInputRef.current?.click()}
             >
               {modelFile ? (
                 <div className="relative w-full h-full flex flex-col items-center justify-center">
-                  <FileArchive className="h-8 w-8 text-blue-600 mb-2" />
+                  <FileArchive className="h-8 w-8 text-muted-foreground mb-2" />
                   <Badge variant="secondary" className="mb-2">
                     {getFileExtension(modelFile.name)}
                   </Badge>
@@ -181,11 +177,14 @@ export function ModelPicturesSection({
                 </div>
               ) : (
                 <>
-                  <Upload className="h-6 w-6 text-blue-600 mb-2" />
-                  <p className="text-sm text-blue-600 font-medium">Upload 3D Model</p>
+                  <Upload className="h-6 w-6 text-muted-foreground mb-2" />
+                  <p className="text-sm text-muted-foreground font-medium">Upload 3D Model</p>
                   <p className="text-xs text-muted-foreground mt-1">
                     STL, GLB, GLTF
                   </p>
+                  {originalData?.modelFileUrl && (
+                    <p className="text-xs text-muted-foreground mt-2">Previous model available</p>
+                  )}
                 </>
               )}
             </div>

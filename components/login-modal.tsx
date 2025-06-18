@@ -1,6 +1,9 @@
 "use client"
 
 import * as React from "react"
+import { useDispatch, useSelector } from 'react-redux'
+import { AppDispatch, RootState } from '@/lib/store'
+import { loginStart, loginSuccess, loginFailure } from '@/lib/features/auth/authSlice'
 import { Button } from "@/components/ui/button"
 import { FaGithub, FaGoogle } from "react-icons/fa";
 import {
@@ -21,6 +24,9 @@ interface LoginModalProps {
 }
 
 export function LoginModal({ open, onOpenChange, onLoginSuccess }: LoginModalProps) {
+  const dispatch = useDispatch<AppDispatch>()
+  const { loading, error } = useSelector((state: RootState) => state.auth)
+  
   const [mode, setMode] = React.useState<"login" | "signup">("login")
   const [email, setEmail] = React.useState("")
   const [password, setPassword] = React.useState("")
@@ -28,17 +34,29 @@ export function LoginModal({ open, onOpenChange, onLoginSuccess }: LoginModalPro
   const [displayName, setDisplayName] = React.useState("")
   const [username, setUsername] = React.useState("")
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
-    // For now, just simulate successful login/signup
-    console.log(mode, { email, password, displayName, username })
+    dispatch(loginStart())
     
-    // Call success callback
-    onLoginSuccess?.()
-    
-    // Reset form
-    resetForm()
+    try {
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 1000))
+      
+      const userData = {
+        id: '1',
+        email,
+        displayName: displayName || 'User',
+        username: username || 'user123',
+        avatarUrl: undefined
+      }
+      
+      dispatch(loginSuccess(userData))
+      onLoginSuccess?.()
+      resetForm()
+    } catch (err) {
+      dispatch(loginFailure('Login failed'))
+    }
   }
 
   const resetForm = () => {
@@ -68,6 +86,11 @@ export function LoginModal({ open, onOpenChange, onLoginSuccess }: LoginModalPro
                 }
             </DialogDescription>
         </DialogHeader>
+        
+        {error && (
+          <div className="text-red-500 text-sm">{error}</div>
+        )}
+        
         <form onSubmit={handleSubmit}>
             <div className="flex flex-col gap-[14px]">
                 {mode === "signup" && (
@@ -149,8 +172,9 @@ export function LoginModal({ open, onOpenChange, onLoginSuccess }: LoginModalPro
                   type="submit"
                   className="w-full py-[12px] text-white text-[16px] items-center justify-center cursor-pointer" 
                   onClick={handleSubmit}
+                  disabled={loading}
                 >
-                    {mode === "login" ? "Login" : "Create Account"}
+                    {loading ? 'Loading...' : (mode === "login" ? "Login" : "Create Account")}
                 </Button>
                 <p className="text-textKedua text-[14px]">
                     {mode === "login" ? "OR LOGIN WITH" : "OR SIGN UP WITH"}

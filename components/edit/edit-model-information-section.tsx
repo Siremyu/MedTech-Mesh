@@ -1,6 +1,8 @@
 "use client"
 
 import * as React from "react"
+import { useSelector } from 'react-redux'
+import { RootState } from '@/lib/store'
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -9,23 +11,17 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Button } from "@/components/ui/button"
 
-interface ModelInformationSectionProps {
+interface EditModelInformationSectionProps {
   onDataChange: (data: any) => void
 }
 
-export function ModelInformationSection({ onDataChange }: ModelInformationSectionProps) {
-  const [formData, setFormData] = React.useState({
-    title: "", // Changed from modelName to title to match Redux
-    category: "",
-    tags: "",
-    nsfwContent: false,
-    allowAdaptations: "yes", // Set default value
-    allowCommercialUse: "yes", // Set default value
-    allowSharing: "yes", // Set default value
-    visibility: "public",
-    description: "",
-    communityPost: false
-  })
+export function EditModelInformationSection({ onDataChange }: EditModelInformationSectionProps) {
+  const { modelInformation } = useSelector((state: RootState) => state.edit)
+  const [formData, setFormData] = React.useState(modelInformation)
+
+  React.useEffect(() => {
+    setFormData(modelInformation)
+  }, [modelInformation])
 
   const handleInputChange = (field: string, value: any) => {
     const updatedData = { ...formData, [field]: value }
@@ -41,11 +37,11 @@ export function ModelInformationSection({ onDataChange }: ModelInformationSectio
       <CardContent className="space-y-6">
         {/* Model Name */}
         <div>
-          <Label htmlFor="title" className="text-base font-medium">
+          <Label htmlFor="modelName" className="text-base font-medium">
             *Model Name
           </Label>
           <Input
-            id="title"
+            id="modelName"
             value={formData.title}
             onChange={(e) => handleInputChange("title", e.target.value)}
             className="mt-2"

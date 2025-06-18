@@ -1,6 +1,9 @@
 "use client"
 
 import * as React from "react"
+import { useDispatch, useSelector } from 'react-redux'
+import { AppDispatch, RootState } from '@/lib/store'
+import { updateField, saveSettingsStart, saveSettingsSuccess } from '@/lib/features/settings/settingsSlice'
 import { ChevronRight } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
@@ -44,14 +47,8 @@ function AccountInfoRow({ label, value, isEditable = true, onClick }: AccountInf
 }
 
 export function AccountInfoCard() {
-  const [userInfo, setUserInfo] = React.useState({
-    displayName: "Name",
-    username: "@username",
-    email: "lorem@gmail.com",
-    gender: "Man",
-    region: "Konoha"
-  })
-
+  const dispatch = useDispatch<AppDispatch>()
+  const { settings, loading } = useSelector((state: RootState) => state.settings)
   const [editField, setEditField] = React.useState<string | null>(null)
   const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false)
 
@@ -60,13 +57,30 @@ export function AccountInfoCard() {
     setIsEditDialogOpen(true)
   }
 
-  const handleSaveField = (newValue: string) => {
+  const handleSaveField = async (newValue: string) => {
     if (editField) {
-      setUserInfo(prev => ({
-        ...prev,
-        [editField === "Display Name" ? "displayName" : editField.toLowerCase()]: newValue
-      }))
+      dispatch(saveSettingsStart())
+      
+      // Map display names to actual field names
+      const fieldMap: { [key: string]: keyof typeof settings } = {
+        "Display Name": "displayName",
+        "Username": "username",
+        "Email": "email",
+        "Gender": "gender",
+        "Region": "region"
+      }
+      
+      const actualField = fieldMap[editField] || editField.toLowerCase()
+      
+      // Update the field in Redux
+      dispatch(updateField({ field: actualField as any, value: newValue }))
+      
+      // Simulate API call
+      setTimeout(() => {
+        dispatch(saveSettingsSuccess())
+      }, 1000)
     }
+    
     setIsEditDialogOpen(false)
     setEditField(null)
   }
@@ -76,15 +90,15 @@ export function AccountInfoCard() {
     
     switch (editField) {
       case "Display Name":
-        return userInfo.displayName
+        return settings.displayName
       case "Username":
-        return userInfo.username
+        return settings.username
       case "Email":
-        return userInfo.email
+        return settings.email
       case "Gender":
-        return userInfo.gender
+        return settings.gender
       case "Region":
-        return userInfo.region
+        return settings.region
       default:
         return ""
     }
@@ -92,12 +106,12 @@ export function AccountInfoCard() {
 
   return (
     <>
-      <Card className="shadow-none">
-        <CardHeader className="w-full">
-          <CardTitle className="text-[20px] font-semibold">Account Information</CardTitle>
+      <Card>
+        <CardHeader>
+          <CardTitle>Account Information</CardTitle>
         </CardHeader>
-        <CardContent className="p-0">
-          <div className="px-6">
+        <CardContent>
+          <div className="space-y-0">
             <AccountInfoRow
               label="Avatar"
               value=""
@@ -106,31 +120,31 @@ export function AccountInfoCard() {
             />
             <AccountInfoRow
               label="Display Name"
-              value={userInfo.displayName}
+              value={settings.displayName}
               isEditable={true}
               onClick={() => handleEditField("Display Name")}
             />
             <AccountInfoRow
               label="Username"
-              value={userInfo.username}
+              value={settings.username}
               isEditable={true}
               onClick={() => handleEditField("Username")}
             />
             <AccountInfoRow
               label="Email"
-              value={userInfo.email}
+              value={settings.email}
               isEditable={true}
               onClick={() => handleEditField("Email")}
             />
             <AccountInfoRow
               label="Gender"
-              value={userInfo.gender}
+              value={settings.gender}
               isEditable={true}
               onClick={() => handleEditField("Gender")}
             />
             <AccountInfoRow
               label="Region"
-              value={userInfo.region}
+              value={settings.region}
               isEditable={true}
               onClick={() => handleEditField("Region")}
             />
@@ -138,7 +152,6 @@ export function AccountInfoCard() {
         </CardContent>
       </Card>
 
-      {/* Edit Dialog */}
       <EditDialog
         open={isEditDialogOpen}
         onOpenChange={setIsEditDialogOpen}
