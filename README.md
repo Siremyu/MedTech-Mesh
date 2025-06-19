@@ -1,6 +1,6 @@
 # MedTech Mesh
 
-> Built with ❤️ for the medical technology
+> Built with ❤️ for the Medical Technology
 
 A modern 3D medical model sharing platform built with Next.js, Redux, and TypeScript. MedTech Mesh allows healthcare professionals, educators, and researchers to share, discover, and collaborate on 3D medical models for education and research purposes.
 
