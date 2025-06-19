@@ -191,7 +191,7 @@ export function ModelViewer({ modelUrl, imageUrl, className }: ModelViewerProps)
       </ErrorBoundary>
       
       {/* Overlay controls info */}
-      <div className="absolute bottom-4 left-4 bg-black/70 text-white px-3 py-1 rounded text-sm">
+      <div className="absolute bottom-4 left-4 bg-black/90 text-white px-3 py-1 rounded text-sm">
         3D Preview • Click & drag to rotate
       </div>
     </div>

@@ -1,124 +1,102 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit'
 
-interface UploadedFile {
+interface UploadFile {
   id: string
-  name: string
-  size: number
-  type: string
-  progress?: number
-}
-
-interface ModelInformation {
-  title: string
-  description: string
-  category: string
-  tags: string
-  visibility: 'public' | 'private'
-  nsfwContent: boolean
-  allowAdaptations: string
-  allowCommercialUse: string
-  allowSharing: string
-  communityPost: boolean
+  fileName: string
+  fileSize: number
+  fileType: string
+  status: 'pending' | 'uploading' | 'completed' | 'error'
+  progress: number
+  url?: string
 }
 
 interface UploadState {
-  files: UploadedFile[]
-  coverImage: File | null
-  modelPictures: File[]
-  modelFile: File | null
-  modelInformation: ModelInformation
-  uploading: boolean
+  files: UploadFile[]
+  isUploading: boolean
   uploadProgress: number
-  loading: boolean // Add loading state
   error: string | null
+  loading: boolean // Add loading state for form initialization
 }
 
 const initialState: UploadState = {
   files: [],
-  coverImage: null,
-  modelPictures: [],
-  modelFile: null,
-  modelInformation: {
-    title: '',
-    description: '',
-    category: '',
-    tags: '',
-    visibility: 'public',
-    nsfwContent: false,
-    allowAdaptations: 'yes',
-    allowCommercialUse: 'yes',
-    allowSharing: 'yes',
-    communityPost: false,
-  },
-  uploading: false,
+  isUploading: false,
   uploadProgress: 0,
-  loading: false,
   error: null,
+  loading: false
 }
 
 const uploadSlice = createSlice({
   name: 'upload',
   initialState,
   reducers: {
-    setFiles: (state, action: PayloadAction<UploadedFile[]>) => {
-      state.files = action.payload
+    setLoading: (state, action: PayloadAction<boolean>) => {
+      state.loading = action.payload
     },
-    addFile: (state, action: PayloadAction<UploadedFile>) => {
-      state.files.push(action.payload)
+    addFile: (state, action: PayloadAction<UploadFile>) => {
+      // Check for duplicates
+      const exists = state.files.some(file => 
+        file.fileName === action.payload.fileName && 
+        file.fileSize === action.payload.fileSize
+      )
+      if (!exists) {
+        state.files.push(action.payload)
+      }
     },
     removeFile: (state, action: PayloadAction<string>) => {
       state.files = state.files.filter(file => file.id !== action.payload)
     },
-    setCoverImage: (state, action: PayloadAction<File | null>) => {
-      state.coverImage = action.payload
+    updateFileStatus: (state, action: PayloadAction<{ id: string; status: UploadFile['status'] }>) => {
+      const file = state.files.find(f => f.id === action.payload.id)
+      if (file) {
+        file.status = action.payload.status
+      }
     },
-    setModelPictures: (state, action: PayloadAction<File[]>) => {
-      state.modelPictures = action.payload
+    updateFileProgress: (state, action: PayloadAction<{ id: string; progress: number }>) => {
+      const file = state.files.find(f => f.id === action.payload.id)
+      if (file) {
+        file.progress = action.payload.progress
+      }
     },
-    addModelPicture: (state, action: PayloadAction<File>) => {
-      state.modelPictures.push(action.payload)
+    setFileUrl: (state, action: PayloadAction<{ id: string; url: string }>) => {
+      const file = state.files.find(f => f.id === action.payload.id)
+      if (file) {
+        file.url = action.payload.url
+      }
     },
-    removeModelPicture: (state, action: PayloadAction<number>) => {
-      state.modelPictures.splice(action.payload, 1)
-    },
-    setModelFile: (state, action: PayloadAction<File | null>) => {
-      state.modelFile = action.payload
-    },
-    updateModelInformation: (state, action: PayloadAction<Partial<ModelInformation>>) => {
-      state.modelInformation = { ...state.modelInformation, ...action.payload }
-    },
-    setUploading: (state, action: PayloadAction<boolean>) => {
-      state.uploading = action.payload
+    setIsUploading: (state, action: PayloadAction<boolean>) => {
+      state.isUploading = action.payload
     },
     setUploadProgress: (state, action: PayloadAction<number>) => {
       state.uploadProgress = action.payload
     },
-    setLoading: (state, action: PayloadAction<boolean>) => {
-      state.loading = action.payload
-    },
     setError: (state, action: PayloadAction<string | null>) => {
       state.error = action.payload
     },
+    clearFiles: (state) => {
+      state.files = []
+    },
     resetUpload: (state) => {
-      return initialState
+      state.files = []
+      state.isUploading = false
+      state.uploadProgress = 0
+      state.error = null
+      state.loading = false
     },
   },
 })
 
 export const {
-  setFiles,
+  setLoading, // Export setLoading
   addFile,
   removeFile,
-  setCoverImage,
-  setModelPictures,
-  addModelPicture,
-  removeModelPicture,
-  setModelFile,
-  updateModelInformation,
-  setUploading,
+  updateFileStatus,
+  updateFileProgress,
+  setFileUrl,
+  setIsUploading,
   setUploadProgress,
-  setLoading,
   setError,
+  clearFiles,
   resetUpload,
 } = uploadSlice.actions
 

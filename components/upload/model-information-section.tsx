@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Checkbox } from "@/components/ui/checkbox"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
-import { Button } from "@/components/ui/button"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 interface ModelInformationSectionProps {
   onDataChange: (data: any) => void
@@ -15,23 +15,73 @@ interface ModelInformationSectionProps {
 
 export function ModelInformationSection({ onDataChange }: ModelInformationSectionProps) {
   const [formData, setFormData] = React.useState({
-    title: "", // Changed from modelName to title to match Redux
+    title: "",
     category: "",
     tags: "",
     nsfwContent: false,
-    allowAdaptations: "yes", // Set default value
-    allowCommercialUse: "yes", // Set default value
-    allowSharing: "yes", // Set default value
+    allowAdaptations: "yes",
+    allowCommercialUse: "no",
+    allowSharing: "yes",
     visibility: "public",
     description: "",
     communityPost: false
   })
 
+  const [errors, setErrors] = React.useState<Record<string, string>>({})
+
+  // Validation rules
+  const validateField = (field: string, value: any): string => {
+    switch (field) {
+      case 'title':
+        if (!value || !value.toString().trim()) return 'Title is required'
+        if (value.toString().trim().length < 3) return 'Title must be at least 3 characters'
+        if (value.toString().trim().length > 100) return 'Title must be less than 100 characters'
+        return ''
+      
+      case 'category':
+        if (!value || !value.toString().trim()) return 'Category is required'
+        return ''
+      
+      case 'description':
+        if (!value || !value.toString().trim()) return 'Description is required'
+        if (value.toString().trim().length < 10) return 'Description must be at least 10 characters'
+        if (value.toString().trim().length > 2000) return 'Description must be less than 2000 characters'
+        return ''
+      
+      case 'tags':
+        if (value && value.toString().length > 500) return 'Tags list is too long'
+        return ''
+      
+      default:
+        return ''
+    }
+  }
+
   const handleInputChange = (field: string, value: any) => {
+    // Validate the field
+    const error = validateField(field, value)
+    setErrors(prev => ({ ...prev, [field]: error }))
+
+    // Update form data
     const updatedData = { ...formData, [field]: value }
     setFormData(updatedData)
-    onDataChange(updatedData)
+    
+    // Only send valid data to parent
+    const hasErrors = Object.values({ ...errors, [field]: error }).some(err => err !== '')
+    if (!hasErrors) {
+      onDataChange(updatedData)
+    }
   }
+
+  // Validate all fields on mount
+  React.useEffect(() => {
+    const allErrors: Record<string, string> = {}
+    Object.keys(formData).forEach(field => {
+      const error = validateField(field, formData[field as keyof typeof formData])
+      if (error) allErrors[field] = error
+    })
+    setErrors(allErrors)
+  }, [])
 
   return (
     <Card className="mb-6 shadow-none">
@@ -48,8 +98,12 @@ export function ModelInformationSection({ onDataChange }: ModelInformationSectio
             id="title"
             value={formData.title}
             onChange={(e) => handleInputChange("title", e.target.value)}
+            placeholder="Enter a descriptive title for your model"
             className="mt-2"
           />
+          {errors.title && (
+            <p className="text-sm text-red-600 mt-1">{errors.title}</p>
+          )}
         </div>
 
         {/* Category */}
@@ -57,48 +111,91 @@ export function ModelInformationSection({ onDataChange }: ModelInformationSectio
           <Label htmlFor="category" className="text-base font-medium">
             *Category
           </Label>
-          <Input
-            id="category"
-            placeholder="Quick search by entering category keywords"
-            value={formData.category}
-            onChange={(e) => handleInputChange("category", e.target.value)}
-            className="mt-2"
-          />
+          <Select 
+            value={formData.category} 
+            onValueChange={(value) => handleInputChange("category", value)}
+          >
+            <SelectTrigger className="mt-2">
+              <SelectValue placeholder="Select a category" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="anatomy">Anatomy</SelectItem>
+              <SelectItem value="cardiology">Cardiology</SelectItem>
+              <SelectItem value="neurology">Neurology</SelectItem>
+              <SelectItem value="orthopedics">Orthopedics</SelectItem>
+              <SelectItem value="dentistry">Dentistry</SelectItem>
+              <SelectItem value="surgery">Surgery</SelectItem>
+              <SelectItem value="pathology">Pathology</SelectItem>
+              <SelectItem value="radiology">Radiology</SelectItem>
+              <SelectItem value="other">Other</SelectItem>
+            </SelectContent>
+          </Select>
+          {errors.category && (
+            <p className="text-sm text-red-600 mt-1">{errors.category}</p>
+          )}
         </div>
 
         {/* Tags */}
         <div>
           <Label htmlFor="tags" className="text-base font-medium">
-            Tags(0/50)
+            Tags (Optional)
           </Label>
           <Input
             id="tags"
-            placeholder="Press 'Enter' to separate tags. Choose similar tags from the dropdown to boost discoverability"
+            placeholder="medical, anatomy, heart, 3d model (comma separated)"
             value={formData.tags}
             onChange={(e) => handleInputChange("tags", e.target.value)}
             className="mt-2"
           />
+          {errors.tags && (
+            <p className="text-sm text-red-600 mt-1">{errors.tags}</p>
+          )}
+          <p className="text-xs text-gray-500 mt-1">
+            Separate multiple tags with commas
+          </p>
+        </div>
+
+        {/* Description */}
+        <div>
+          <Label htmlFor="description" className="text-base font-medium">
+            *Description
+          </Label>
+          <Textarea
+            id="description"
+            placeholder="Describe your model, its purpose, and any important details..."
+            value={formData.description}
+            onChange={(e) => handleInputChange("description", e.target.value)}
+            rows={4}
+            className="mt-2"
+          />
+          {errors.description && (
+            <p className="text-sm text-red-600 mt-1">{errors.description}</p>
+          )}
+          <p className="text-xs text-gray-500 mt-1">
+            {formData.description.length}/2000 characters
+          </p>
         </div>
 
         {/* NSFW Content */}
-        <div className="flex items-center space-x-2">
+        <div className="flex items-start space-x-2">
           <Checkbox
             id="nsfwContent"
             checked={formData.nsfwContent}
             onCheckedChange={(checked) => handleInputChange("nsfwContent", checked)}
           />
-          <Label htmlFor="nsfwContent" className="text-sm">
-            <strong>NSFW content for adults only</strong>
-            <br />
-            <span className="text-muted-foreground">
-              This model includes nudity, violence, profanity or other potentially disturbing subject matter.
-            </span>
-          </Label>
+          <div>
+            <Label htmlFor="nsfwContent" className="text-sm font-medium">
+              NSFW content for adults only
+            </Label>
+            <p className="text-xs text-muted-foreground">
+              Check this if your model contains sensitive content
+            </p>
+          </div>
         </div>
 
-        {/* License */}
+        {/* License Section */}
         <div>
-          <Label className="text-base font-medium">*License</Label>
+          <Label className="text-base font-medium">*License & Permissions</Label>
           
           <div className="mt-4 space-y-4">
             {/* Allow adaptations */}
@@ -118,10 +215,6 @@ export function ModelInformationSection({ onDataChange }: ModelInformationSectio
                 <div className="flex items-center space-x-2">
                   <RadioGroupItem value="no" id="adaptations-no" />
                   <Label htmlFor="adaptations-no">No</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="yes-same-way" id="adaptations-same" />
-                  <Label htmlFor="adaptations-same">Yes, as long as others share in the same way</Label>
                 </div>
               </RadioGroup>
             </div>
@@ -147,10 +240,10 @@ export function ModelInformationSection({ onDataChange }: ModelInformationSectio
               </RadioGroup>
             </div>
 
-            {/* Sharing or redistributing */}
+            {/* Sharing */}
             <div>
               <Label className="text-sm font-medium mb-2 block">
-                Allow sharing or redistributing of your work or its derivatives?
+                Allow sharing or redistributing of your work?
               </Label>
               <RadioGroup
                 value={formData.allowSharing}
@@ -189,24 +282,6 @@ export function ModelInformationSection({ onDataChange }: ModelInformationSectio
           </RadioGroup>
         </div>
 
-        {/* Description */}
-        <div>
-          <Label htmlFor="description" className="text-base font-medium">
-            *Description
-          </Label>
-          <p className="text-sm text-muted-foreground mt-1 mb-2">
-            If you want to add a generic header or footer to all of your model's descriptions, you can configure it in Creator center &gt; Customization
-          </p>
-          <Textarea
-            id="description"
-            placeholder="Tell others about your model"
-            value={formData.description}
-            onChange={(e) => handleInputChange("description", e.target.value)}
-            rows={4}
-            className="mt-2"
-          />
-        </div>
-
         {/* Community Post */}
         <div className="flex items-center space-x-2">
           <Checkbox
@@ -215,16 +290,8 @@ export function ModelInformationSection({ onDataChange }: ModelInformationSectio
             onCheckedChange={(checked) => handleInputChange("communityPost", checked)}
           />
           <Label htmlFor="communityPost" className="text-base font-medium">
-            Community Post
+            Share in community feed
           </Label>
-        </div>
-
-        {/* Documentation */}
-        <div>
-          <Label className="text-base font-medium mb-3 block">Documentation</Label>
-          <Button variant="outline" className="text-primary border-primary">
-            + Add Documentation
-          </Button>
         </div>
       </CardContent>
     </Card>

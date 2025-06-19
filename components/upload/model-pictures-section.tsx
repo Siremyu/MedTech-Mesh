@@ -1,22 +1,17 @@
 "use client"
 
 import * as React from "react"
-import { Upload, Plus, X, FileArchive } from "lucide-react"
+import { Upload, Plus, X, FileArchive, Image } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
-
-interface ModelFile {
-  file: File
-  type: 'image' | '3d'
-  preview?: string
-}
+import { toast } from "sonner"
 
 interface ModelPicturesSectionProps {
-  onCoverChange: (file: File | null) => void
-  onPicturesChange: (files: File[]) => void
-  onModelFileChange?: (file: File | null) => void // Add for 3D file
+  onCoverChange?: (file: File | null) => void
+  onPicturesChange?: (files: File[]) => void
+  onModelFileChange?: (file: File | null) => void
 }
 
 export function ModelPicturesSection({ 
@@ -25,234 +20,330 @@ export function ModelPicturesSection({
   onModelFileChange 
 }: ModelPicturesSectionProps) {
   const [coverImage, setCoverImage] = React.useState<File | null>(null)
-  const [modelPictures, setModelPictures] = React.useState<File[]>([])
-  const [modelFile, setModelFile] = React.useState<File | null>(null) // Add 3D model file state
-  const coverInputRef = React.useRef<HTMLInputElement>(null)
-  const picturesInputRef = React.useRef<HTMLInputElement>(null)
-  const modelFileInputRef = React.useRef<HTMLInputElement>(null) // Add ref for 3D file input
+  const [pictures, setPictures] = React.useState<File[]>([])
+  const [modelFile, setModelFile] = React.useState<File | null>(null)
+  const [coverPreview, setCoverPreview] = React.useState<string | null>(null)
+  const [picturesPreviews, setPicturesPreviews] = React.useState<string[]>([])
 
+  // Safe image validation
+  const isValidImageUrl = (url: string | null | undefined): boolean => {
+    return !!(url && typeof url === 'string' && url.trim().length > 0 && !url.includes('undefined'))
+  }
+
+  // Handle cover image change with better error handling
   const handleCoverChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0] || null
-    setCoverImage(file)
-    onCoverChange(file)
-  }
+    const file = e.target.files?.[0]
+    if (file) {
+      // Validate file before processing
+      if (!file.type.startsWith('image/')) {
+        toast.error('Please select a valid image file')
+        return
+      }
 
-  const handlePicturesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || [])
-    const updatedPictures = [...modelPictures, ...files]
-    setModelPictures(updatedPictures)
-    onPicturesChange(updatedPictures)
-  }
+      if (file.size > 10 * 1024 * 1024) { // 10MB limit
+        toast.error('Image file is too large. Maximum size is 10MB')
+        return
+      }
 
-  // Add 3D model file handler
-  const handleModelFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0] || null
-    setModelFile(file)
-    onModelFileChange?.(file)
-  }
-
-  const removePicture = (index: number) => {
-    const updatedPictures = modelPictures.filter((_, i) => i !== index)
-    setModelPictures(updatedPictures)
-    onPicturesChange(updatedPictures)
-  }
-
-  // Add remove 3D model function
-  const removeModelFile = () => {
-    setModelFile(null)
-    onModelFileChange?.(null)
-    if (modelFileInputRef.current) {
-      modelFileInputRef.current.value = ''
+      setCoverImage(file)
+      onCoverChange?.(file)
+      
+      // Generate preview safely
+      try {
+        const reader = new FileReader()
+        reader.onload = (e) => {
+          const result = e.target?.result
+          if (typeof result === 'string' && result.length > 0) {
+            setCoverPreview(result)
+          }
+        }
+        reader.onerror = () => {
+          console.error('Failed to read cover image file')
+          toast.error('Failed to preview image')
+        }
+        reader.readAsDataURL(file)
+      } catch (error) {
+        console.error('Error creating FileReader for cover:', error)
+        toast.error('Failed to process image')
+      }
     }
   }
 
-  const createImageUrl = (file: File) => {
-    return URL.createObjectURL(file)
+  // Handle pictures change with better validation
+  const handlePicturesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || [])
+    if (files.length > 0) {
+      // Validate each file
+      const validFiles = files.filter(file => {
+        if (!file.type.startsWith('image/')) {
+          toast.error(`${file.name} is not a valid image file`)
+          return false
+        }
+        if (file.size > 10 * 1024 * 1024) {
+          toast.error(`${file.name} is too large (max 10MB)`)
+          return false
+        }
+        return true
+      })
+
+      if (validFiles.length === 0) return
+
+      setPictures(prev => [...prev, ...validFiles])
+      onPicturesChange?.(validFiles)
+      
+      // Generate previews safely
+      validFiles.forEach(file => {
+        try {
+          const reader = new FileReader()
+          reader.onload = (e) => {
+            const result = e.target?.result
+            if (typeof result === 'string' && result.length > 0) {
+              setPicturesPreviews(prev => [...prev, result])
+            }
+          }
+          reader.onerror = () => {
+            console.error(`Failed to read file: ${file.name}`)
+          }
+          reader.readAsDataURL(file)
+        } catch (error) {
+          console.error(`Error processing file ${file.name}:`, error)
+        }
+      })
+    }
   }
 
-  // Get file extension for display
-  const getFileExtension = (filename: string) => {
-    return filename.split('.').pop()?.toUpperCase()
+  // Handle model file change with validation
+  const handleModelFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      // Validate file extension
+      const validExtensions = ['.blend', '.stl', '.obj', '.ply', '.fbx', '.gltf', '.glb', '.dae', '.3ds']
+      const fileExtension = '.' + file.name.split('.').pop()?.toLowerCase()
+      
+      if (!validExtensions.includes(fileExtension)) {
+        toast.error(`Unsupported file format. Supported: ${validExtensions.join(', ')}`)
+        return
+      }
+
+      if (file.size > 100 * 1024 * 1024) { // 100MB limit
+        toast.error('Model file is too large. Maximum size is 100MB')
+        return
+      }
+
+      if (file.size === 0) {
+        toast.error('Selected file appears to be empty')
+        return
+      }
+
+      setModelFile(file)
+      onModelFileChange?.(file)
+      toast.success(`Model file "${file.name}" added successfully`)
+    }
   }
 
-  // Format file size
-  const formatFileSize = (bytes: number) => {
-    if (bytes === 0) return '0 Bytes'
-    const k = 1024
-    const sizes = ['Bytes', 'KB', 'MB', 'GB']
-    const i = Math.floor(Math.log(bytes) / Math.log(k))
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
+  // Remove picture with index validation
+  const removePicture = (index: number) => {
+    if (index < 0 || index >= pictures.length) {
+      console.warn('Invalid picture index:', index)
+      return
+    }
+
+    setPictures(prev => prev.filter((_, i) => i !== index))
+    setPicturesPreviews(prev => prev.filter((_, i) => i !== index))
+    toast.success('Picture removed')
+  }
+
+  // Remove cover image
+  const removeCoverImage = () => {
+    setCoverImage(null)
+    setCoverPreview(null)
+    onCoverChange?.(null)
+    toast.success('Cover image removed')
+  }
+
+  // Remove model file
+  const removeModelFile = () => {
+    setModelFile(null)
+    onModelFileChange?.(null)
+    toast.success('Model file removed')
   }
 
   return (
-    <Card className="mb-6 shadow-none">
-      <CardHeader>
-        <CardTitle>Model Pictures</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        {/* Model Cover */}
-        <div>
-          <Label className="text-base font-medium mb-3 block">Model Cover</Label>
-          <p className="text-sm text-muted-foreground mb-3">
-            Please use real print photos
-          </p>
-          <p className="text-sm text-red-500 mb-4">* Web cover</p>
-          
-          <div 
-            className="w-[221px] aspect-[4/3] border-2 border-dashed border-muted-foreground/25 rounded-lg p-4 text-center cursor-pointer hover:border-muted-foreground/50 transition-colors flex flex-col items-center justify-center"
-            onClick={() => coverInputRef.current?.click()}
-          >
-            {coverImage ? (
-              <div className="relative">
-                <img 
-                  src={createImageUrl(coverImage)} 
-                  alt="Cover preview"
-                  className="mx-auto max-h-32 rounded"
-                />
-                <p className="mt-2 text-sm font-medium">{coverImage.name}</p>
+    <div className="space-y-6">
+      {/* Cover Image Section */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Image className="w-5 h-5" />
+            Cover Image
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {coverImage && isValidImageUrl(coverPreview) ? (
+            <div className="relative">
+              <img 
+                src={coverPreview!} 
+                alt="Cover preview"
+                className="w-full h-48 object-cover rounded-lg border"
+                onError={(e) => {
+                  console.error('Cover image failed to load')
+                  // Remove the broken image
+                  const target = e.target as HTMLImageElement
+                  target.style.display = 'none'
+                }}
+              />
+              <Button
+                variant="destructive"
+                size="sm"
+                className="absolute top-2 right-2"
+                onClick={removeCoverImage}
+              >
+                <X className="w-4 h-4" />
+              </Button>
+              <div className="mt-2">
+                <Badge variant="secondary">{coverImage.name}</Badge>
               </div>
-            ) : (
-              <>
-                <Upload className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
-                <p className="text-sm text-muted-foreground">4:3 Cover</p>
-              </>
+            </div>
+          ) : (
+            <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
+              <Upload className="w-12 h-12 mx-auto mb-4 text-gray-400" />
+              <p className="text-gray-600 mb-4">Upload a cover image for your model</p>
+              <input
+                type="file"
+                accept="image/jpeg,image/jpg,image/png,image/webp"
+                onChange={handleCoverChange}
+                className="hidden"
+                id="cover-upload"
+              />
+              <Button asChild variant="outline">
+                <label htmlFor="cover-upload" className="cursor-pointer">
+                  Choose Cover Image
+                </label>
+              </Button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Gallery Pictures Section */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Image className="w-5 h-5" />
+            Gallery Pictures ({pictures.length}/10)
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {pictures.length > 0 && (
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {pictures.map((file, index) => {
+                  const previewUrl = picturesPreviews[index]
+                  return (
+                    <div key={`${file.name}-${index}`} className="relative">
+                      {isValidImageUrl(previewUrl) ? (
+                        <img 
+                          src={previewUrl} 
+                          alt={`Gallery ${index + 1}`}
+                          className="w-full h-24 object-cover rounded-lg border"
+                          onError={(e) => {
+                            console.error(`Gallery image ${index} failed to load`)
+                            const target = e.target as HTMLImageElement
+                            target.style.display = 'none'
+                          }}
+                        />
+                      ) : (
+                        <div className="w-full h-24 bg-gray-200 rounded-lg border flex items-center justify-center">
+                          <span className="text-gray-500 text-xs">Loading...</span>
+                        </div>
+                      )}
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        className="absolute top-1 right-1 w-6 h-6 p-0"
+                        onClick={() => removePicture(index)}
+                      >
+                        <X className="w-3 h-3" />
+                      </Button>
+                    </div>
+                  )
+                })}
+              </div>
             )}
-          </div>
-          
-          <input
-            ref={coverInputRef}
-            type="file"
-            accept="image/*"
-            onChange={handleCoverChange}
-            className="hidden"
-          />
-        </div>
-
-        {/* Model Pictures */}
-        <div>
-          <Label className="text-base font-medium mb-3 block">
-            Model Pictures ({modelPictures.length}/16)
-          </Label>
-          <p className="text-sm text-muted-foreground mb-4">
-            Photos of printed project (image file) and/or for 3d Viewer (Optional but recommended, stl/glb/gltf files)
-          </p>
-          
-          <div className="flex gap-[48px] flex-wrap">
-            {/* Add Picture Buttons */}
-            <div 
-              className="w-[162px] aspect-[1189/669] border-2 border-dashed border-muted-foreground/25 rounded-lg p-8 text-center cursor-pointer hover:border-muted-foreground/50 transition-colors flex flex-col items-center justify-center"
-              onClick={() => picturesInputRef.current?.click()}
-            >
-              <Plus className="h-6 w-6 text-muted-foreground mb-2" />
-              <p className="text-sm text-muted-foreground">Add Picture</p>
-            </div>
             
-            {/* Upload 3D Model */}
-            <div 
-              className="border-2 border-dashed border-blue-300 rounded-lg p-8 text-center cursor-pointer hover:border-blue-500 transition-colors w-[162px] aspect-[1189/669] flex flex-col items-center justify-center relative"
-              onClick={() => modelFileInputRef.current?.click()}
-            >
-              {modelFile ? (
-                <div className="relative w-full h-full flex flex-col items-center justify-center">
-                  <FileArchive className="h-8 w-8 text-blue-600 mb-2" />
-                  <Badge variant="secondary" className="mb-2">
-                    {getFileExtension(modelFile.name)}
-                  </Badge>
-                  <p className="text-xs font-medium text-center break-words px-2">
-                    {modelFile.name.length > 20 
-                      ? `${modelFile.name.substring(0, 20)}...` 
-                      : modelFile.name
-                    }
+            <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+              <Plus className="w-8 h-8 mx-auto mb-2 text-gray-400" />
+              <p className="text-gray-600 mb-4">Add more pictures to showcase your model</p>
+              <input
+                type="file"
+                accept="image/jpeg,image/jpg,image/png,image/webp"
+                multiple
+                onChange={handlePicturesChange}
+                className="hidden"
+                id="pictures-upload"
+              />
+              <Button asChild variant="outline" disabled={pictures.length >= 10}>
+                <label htmlFor="pictures-upload" className="cursor-pointer">
+                  {pictures.length >= 10 ? 'Maximum reached' : 'Add Pictures'}
+                </label>
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* 3D Model File Section */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <FileArchive className="w-5 h-5" />
+            3D Model File
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {modelFile ? (
+            <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+              <div className="flex items-center gap-3">
+                <FileArchive className="w-8 h-8 text-blue-600" />
+                <div>
+                  <p className="font-medium">{modelFile.name}</p>
+                  <p className="text-sm text-gray-500">
+                    {(modelFile.size / (1024 * 1024)).toFixed(2)} MB
                   </p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {formatFileSize(modelFile.size)}
-                  </p>
-                  <Button
-                    variant="destructive"
-                    size="icon"
-                    className="absolute top-1 right-1 h-5 w-5"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      removeModelFile()
-                    }}
-                  >
-                    <X className="h-3 w-3" />
-                  </Button>
                 </div>
-              ) : (
-                <>
-                  <Upload className="h-6 w-6 text-blue-600 mb-2" />
-                  <p className="text-sm text-blue-600 font-medium">Upload 3D Model</p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    STL, GLB, GLTF
-                  </p>
-                </>
-              )}
-            </div>
-
-            {/* Uploaded Pictures */}
-            {modelPictures.map((picture, index) => (
-              <div key={index} className="relative w-[162px] aspect-[1189/669]">
-                <img 
-                  src={createImageUrl(picture)} 
-                  alt={`Model picture ${index + 1}`}
-                  className="w-full h-full object-cover rounded-lg"
-                />
-                <Button
-                  variant="destructive"
-                  size="icon"
-                  className="absolute top-2 right-2 h-6 w-6"
-                  onClick={() => removePicture(index)}
-                >
-                  <X className="h-3 w-3" />
-                </Button>
-                <Badge 
-                  variant="secondary" 
-                  className="absolute bottom-2 left-2 text-xs"
-                >
-                  IMG
-                </Badge>
               </div>
-            ))}
-          </div>
-          
-          <input
-            ref={picturesInputRef}
-            type="file"
-            accept="image/*"
-            multiple
-            onChange={handlePicturesChange}
-            className="hidden"
-          />
-
-          {/* 3D Model File Input */}
-          <input
-            ref={modelFileInputRef}
-            type="file"
-            accept=".stl,.glb,.gltf,.obj"
-            onChange={handleModelFileChange}
-            className="hidden"
-          />
-        </div>
-
-        {/* 3D Model Info */}
-        {modelFile && (
-          <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-            <div className="flex items-center gap-2 mb-2">
-              <FileArchive className="h-4 w-4 text-blue-600" />
-              <span className="text-sm font-medium text-blue-800">3D Model Uploaded</span>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={removeModelFile}
+                className="text-red-600 hover:text-red-700"
+              >
+                <X className="w-4 h-4" />
+              </Button>
             </div>
-            <div className="text-sm text-blue-700">
-              <p><strong>File:</strong> {modelFile.name}</p>
-              <p><strong>Size:</strong> {formatFileSize(modelFile.size)}</p>
-              <p><strong>Type:</strong> {getFileExtension(modelFile.name)} Model</p>
+          ) : (
+            <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
+              <FileArchive className="w-12 h-12 mx-auto mb-4 text-gray-400" />
+              <p className="text-gray-600 mb-2">Upload your 3D model file</p>
+              <p className="text-sm text-gray-500 mb-4">
+                Supported formats: BLEND, STL, OBJ, PLY, FBX, GLTF, GLB
+              </p>
+              <input
+                type="file"
+                accept=".blend,.stl,.obj,.ply,.fbx,.gltf,.glb,.dae,.3ds,.max,.ma,.mb"
+                onChange={handleModelFileChange}
+                className="hidden"
+                id="model-upload"
+              />
+              <Button asChild variant="outline">
+                <label htmlFor="model-upload" className="cursor-pointer">
+                  Choose 3D Model File
+                </label>
+              </Button>
             </div>
-            <p className="text-xs text-blue-600 mt-2">
-              ✓ This model will be available for 3D preview on your product page
-            </p>
-          </div>
-        )}
-      </CardContent>
-    </Card>
+          )}
+        </CardContent>
+      </Card>
+    </div>
   )
 }

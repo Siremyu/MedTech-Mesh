@@ -4,9 +4,11 @@ import { createSlice, PayloadAction } from '@reduxjs/toolkit'
 interface User {
   id: string
   email: string
-  displayName: string
   username: string
+  displayName: string
   avatarUrl?: string
+  totalLikes?: number
+  totalDownloads?: number
 }
 
 interface AuthState {
@@ -39,20 +41,21 @@ const authSlice = createSlice({
     },
     loginFailure: (state, action: PayloadAction<string>) => {
       state.loading = false
+      state.isLoggedIn = false
+      state.user = null
       state.error = action.payload
     },
     logout: (state) => {
       state.user = null
       state.isLoggedIn = false
+      state.loading = false
       state.error = null
     },
-    updateProfile: (state, action: PayloadAction<Partial<User>>) => {
-      if (state.user) {
-        state.user = { ...state.user, ...action.payload }
-      }
+    clearError: (state) => {
+      state.error = null
     },
   },
 })
 
-export const { loginStart, loginSuccess, loginFailure, logout, updateProfile } = authSlice.actions
+export const { loginStart, loginSuccess, loginFailure, logout, clearError } = authSlice.actions
 export default authSlice.reducer

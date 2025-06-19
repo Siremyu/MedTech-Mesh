@@ -1,6 +1,6 @@
 'use client'
 
-import { AvatarFallback } from '@/components/ui/avatar'
+import { AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Avatar } from '@radix-ui/react-avatar'
 import { BiLike } from 'react-icons/bi';
 import { MdOutlineFileDownload } from 'react-icons/md';
@@ -10,8 +10,8 @@ interface ProfileHeaderProps {
   username: string
   likes: number
   downloads: number
-  avatarUrl?: string
-  coverImageUrl?: string
+  avatarUrl?: string | null
+  coverImageUrl?: string | null
 }
 
 export function ProfileHeader({ 
@@ -22,6 +22,8 @@ export function ProfileHeader({
   avatarUrl, 
   coverImageUrl 
 }: ProfileHeaderProps) {
+  console.log('🖼️ ProfileHeader - Avatar URL:', avatarUrl)
+  
   return (
     <>
       {/* Cover Image */}
@@ -36,7 +38,14 @@ export function ProfileHeader({
         {/* User Information */}
         <div className='border-b-1 pb-[18px]'>
           <Avatar className='relative top-[-62px]'>
-            <AvatarFallback className='size-[124px] outline-1'>
+            {avatarUrl && (
+              <AvatarImage 
+                src={avatarUrl} 
+                alt={`${name}'s avatar`}
+                className='size-[124px] outline-1 object-cover'
+              />
+            )}
+            <AvatarFallback className='size-[124px] outline-1 bg-gray-200 text-gray-700 text-2xl font-semibold'>
               {name.slice(0, 2).toUpperCase()}
             </AvatarFallback>
           </Avatar>

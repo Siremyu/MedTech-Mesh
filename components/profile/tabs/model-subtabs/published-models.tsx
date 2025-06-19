@@ -1,3 +1,4 @@
+// components/profile/tabs/model-subtabs/published-models.tsx
 'use client'
 
 import React from 'react'
@@ -7,6 +8,31 @@ import { Model } from '@/types/model'
 interface PublishedModelsProps {
   models: Model[]
   onModelClick: (modelId: string) => void
+}
+
+// Helper function to safely format date
+const formatDate = (dateInput: string | Date): string => {
+  try {
+    if (typeof dateInput === 'string') {
+      if (dateInput.includes('ago') || dateInput.includes('weeks') || dateInput.includes('days')) {
+        return dateInput
+      }
+      const date = new Date(dateInput)
+      if (isNaN(date.getTime())) {
+        return dateInput
+      }
+      return date.toLocaleDateString()
+    }
+    
+    if (dateInput instanceof Date) {
+      return dateInput.toLocaleDateString()
+    }
+    
+    return 'Unknown date'
+  } catch (error) {
+    console.error('Date formatting error:', error)
+    return 'Invalid date'
+  }
 }
 
 export function PublishedModels({ models, onModelClick }: PublishedModelsProps) {
@@ -35,23 +61,25 @@ export function PublishedModels({ models, onModelClick }: PublishedModelsProps) 
       {publishedModels.map((model, index) => (
         <div 
           key={index}
-          className="overflow-hidden cursor-pointer hover:shadow-lg transition-shadow"
+          className="overflow-hidden cursor-pointer"
           onClick={() => onModelClick(model.id)}
         >
-          {/* Model Image */}
+          {/* Model Image - Standardized */}
           <div className="rounded-[4px] h-[160px] bg-gray-400 relative">
             <div className="absolute top-2 right-2 bg-green-500 text-white px-2 py-1 rounded text-xs font-medium">
               Published
             </div>
           </div>
           
-          {/* Model Info */}
+          {/* Model Info - Standardized */}
           <div className="p-4">
             <h3 className="font-semibold">{model.title}</h3>
             <p className="text-gray-600 text-sm mt-1">{model.category}</p>
-            <p className="text-gray-500 text-xs mt-1">Published {model.createdAt}</p>
+            <p className="text-gray-500 text-xs mt-1">
+              Published {formatDate(model.createdAt)}
+            </p>
             
-            {/* Stats */}
+            {/* Stats - Standardized */}
             <div className="flex items-center gap-4 mt-3 text-sm text-gray-600">
               <span className="flex items-center gap-1">
                 <Heart className="w-4 h-4" />
