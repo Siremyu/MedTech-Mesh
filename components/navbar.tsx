@@ -25,7 +25,7 @@ import {
   NavigationMenuList,
 } from "@/components/ui/navigation-menu"
 import { LoginModal } from "./login-modal"
-import { Search, Upload, Bell, User, X } from "lucide-react"
+import { Search, Upload, Bell, User, X, Shield } from "lucide-react"
 import { CiSettings } from "react-icons/ci"
 import { IoLogOutOutline } from "react-icons/io5"
 import { toast } from 'sonner'
@@ -44,11 +44,31 @@ export function Navbar({ onLogin, onLogout }: NavbarProps) {
   
   const [showLoginModal, setShowLoginModal] = React.useState(false)
   const [localSearchQuery, setLocalSearchQuery] = React.useState(searchQuery)
+  const [isAdmin, setIsAdmin] = React.useState(false)
 
   // Update local search when Redux state changes
   React.useEffect(() => {
     setLocalSearchQuery(searchQuery)
   }, [searchQuery])
+
+  // Check admin status
+  React.useEffect(() => {
+    const checkAdmin = async () => {
+      if (session?.user) {
+        try {
+          const response = await fetch('/api/admin/check-role')
+          if (response.ok) {
+            const data = await response.json()
+            setIsAdmin(data.isAdmin)
+          }
+        } catch (error) {
+          console.error('Error checking admin status:', error)
+        }
+      }
+    }
+
+    checkAdmin()
+  }, [session])
 
   const isAuthenticated = status === "authenticated" || isLoggedIn
 
@@ -158,6 +178,10 @@ export function Navbar({ onLogin, onLogout }: NavbarProps) {
     router.push('/upload')
   }
 
+  const handleAdminClick = () => {
+    router.push('/admin')
+  }
+
   return (
     <header className="fixed top-0 left-0 right-0 z-50 border-b bg-background">
       <div className="flex items-center justify-between px-[52px] py-[12px]">
@@ -221,16 +245,29 @@ export function Navbar({ onLogin, onLogout }: NavbarProps) {
             <div>Loading...</div>
           ) : isAuthenticated ? (
             <>
-              {/* Fix: Remove Link wrapper, use Button with onClick */}
-              <Button 
-                className="cursor-pointer" 
-                variant="outline" 
-                size="sm"
-                onClick={handleUploadClick}
-              >
-                <Upload className="h-4 w-4 mr-2" />
-                Upload
-              </Button>
+              {/* Show different buttons based on user role */}
+              {isAdmin ? (
+                // Admin users see Admin Dashboard button instead of Upload
+                <Button 
+                  className="cursor-pointer bg-red-600 hover:bg-red-700 text-white" 
+                  size="sm"
+                  onClick={handleAdminClick}
+                >
+                  <Shield className="h-4 w-4 mr-2" />
+                  Admin Dashboard
+                </Button>
+              ) : (
+                // Regular users see Upload button
+                <Button 
+                  className="cursor-pointer" 
+                  variant="outline" 
+                  size="sm"
+                  onClick={handleUploadClick}
+                >
+                  <Upload className="h-4 w-4 mr-2" />
+                  Upload
+                </Button>
+              )}
 
               <Button variant="ghost" size="icon" className="cursor-pointer rounded-full">
                 <Bell className="h-[22px] w-[22px] fill-black" />
@@ -290,6 +327,22 @@ export function Navbar({ onLogin, onLogout }: NavbarProps) {
                     <CiSettings className="mr-[4px] h-[16px] w-[16px]" />
                     Settings
                   </DropdownMenuItem>
+                  
+                  {/* Admin dropdown item - only show for admins in dropdown */}
+                  {isAuthenticated && isAdmin && (
+                    <DropdownMenuItem onClick={handleAdminClick} className="cursor-pointer">
+                      <Shield className="mr-[4px] h-[14px] w-[14px]" />
+                      Admin Dashboard
+                    </DropdownMenuItem>
+                  )}
+                  
+                  {/* Upload option in dropdown for admins */}
+                  {isAuthenticated && isAdmin && (
+                    <DropdownMenuItem onClick={handleUploadClick} className="cursor-pointer">
+                      <Upload className="mr-[4px] h-[14px] w-[14px]" />
+                      Upload Model
+                    </DropdownMenuItem>
+                  )}
                   
                   <DropdownMenuSeparator />
                   

@@ -18,6 +18,7 @@ model User {
   region        String?
   gender        String?
   emailVerified Boolean @default(false) // Ensure this is Boolean, not DateTime
+  role          Role    @default(USER) // Add this line
 
   // Timestamps
   createdAt DateTime @default(now())
@@ -140,4 +141,10 @@ model Collection {
   updatedAt DateTime @updatedAt
 
   @@map("collections")
+}
+
+enum Role {
+  USER
+  ADMIN
+  MODERATOR
 }

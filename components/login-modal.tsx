@@ -156,15 +156,27 @@ export function LoginModal({ open, onOpenChange, onLoginSuccess }: LoginModalPro
     }
   }
 
+  // In the handleSubmit function, add better error handling for validation errors
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
-    if (mode === "signup" && password !== confirmPassword) {
-      dispatch(loginFailure("Passwords don't match"))
-      toast.error("Passwords don't match")
-      return
+    // Add client-side validation first
+    if (mode === "signup") {
+      // Validate username format before sending to server
+      const usernameRegex = /^[a-zA-Z0-9_]+$/
+      if (!usernameRegex.test(username)) {
+        dispatch(loginFailure("Username can only contain letters, numbers, and underscores"))
+        toast.error("Username can only contain letters, numbers, and underscores")
+        return
+      }
+      
+      if (password !== confirmPassword) {
+        dispatch(loginFailure("Passwords don't match"))
+        toast.error("Passwords don't match")
+        return
+      }
     }
-    
+
     dispatch(loginStart())
     
     if (mode === "login") {
@@ -173,31 +185,38 @@ export function LoginModal({ open, onOpenChange, onLoginSuccess }: LoginModalPro
       // Handle signup
       try {
         console.log('📝 Starting registration...')
-        
         const response = await fetch('/api/auth/register', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ 
-            email, 
-            password, 
-            confirmPassword, 
-            displayName, 
-            username 
+          body: JSON.stringify({
+            email,
+            password,
+            confirmPassword,
+            displayName,
+            username
           }),
         })
         
         const data = await response.json()
         
         if (!response.ok) {
+          // Handle specific validation errors
+          if (data.details && Array.isArray(data.details)) {
+            const errorMessages = data.details.map((detail: any) => {
+              if (detail.path && detail.path.includes('username')) {
+                return `Username error: ${detail.message}`
+              }
+              return detail.message
+            }).join(', ')
+            throw new Error(errorMessages)
+          }
           throw new Error(data.error || 'Registration failed')
         }
         
         console.log('✅ Registration successful, logging in...')
         toast.success('Account created successfully!')
-        
         // After successful registration, login
         await handleCredentialsLogin()
-        
       } catch (err: any) {
         console.error('❌ Registration error:', err)
         dispatch(loginFailure(err.message || 'Registration failed'))
