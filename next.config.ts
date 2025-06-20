@@ -2,101 +2,39 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   experimental: {
-    // Enable server components optimizations
-    serverComponentsExternalPackages: ['three']
+    // serverComponentsExternalPackages sudah deprecated
+    // pindah ke serverExternalPackages
   },
+  serverExternalPackages: [
+    '@prisma/client',
+    'prisma',
+    'bcryptjs',
+    'jsonwebtoken'
+  ],
   images: {
-    remotePatterns: [
-      {
-        protocol: 'https',
-        hostname: 'cdn.myanimelist.net',
-        port: '',
-        pathname: '/images/**',
-      },
-      {
-        protocol: 'https',
-        hostname: '*.myanimelist.net',
-        port: '',
-        pathname: '/**',
-      },
-      {
-        protocol: 'https',
-        hostname: 'res.cloudinary.com',
-        port: '',
-        pathname: '/**',
-      },
+    domains: [
+      'res.cloudinary.com', 
+      'avatars.githubusercontent.com', 
+      'lh3.googleusercontent.com',
+      'images.unsplash.com',
+      'via.placeholder.com'
     ],
-    dangerouslyAllowSVG: true,
-    contentDispositionType: 'attachment',
-    contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
   },
-  
-  // Add support for 3D model files and proper headers
-  async headers() {
-    return [
-      {
-        source: '/uploads/:path*',
-        headers: [
-          {
-            key: 'Access-Control-Allow-Origin',
-            value: '*',
-          },
-          {
-            key: 'Access-Control-Allow-Methods',
-            value: 'GET, POST, PUT, DELETE, OPTIONS',
-          },
-          {
-            key: 'Access-Control-Allow-Headers',
-            value: 'Content-Type, Authorization',
-          },
-          {
-            key: 'Cross-Origin-Embedder-Policy',
-            value: 'unsafe-none',
-          },
-          {
-            key: 'Cross-Origin-Resource-Policy',
-            value: 'cross-origin',
-          },
-        ],
-      },
-    ]
+  typescript: {
+    ignoreBuildErrors: false,
   },
-
-  // Handle 3D file extensions in static serving
-  async rewrites() {
-    return [
-      {
-        source: '/models/:path*',
-        destination: '/api/files/models/:path*',
-      },
-    ]
+  eslint: {
+    ignoreDuringBuilds: false,
   },
-
-  // Webpack configuration for Three.js
-  webpack: (config, { isServer }) => {
-    // Handle Three.js modules
-    config.module.rules.push({
-      test: /\.(glsl|vs|fs|vert|frag)$/,
-      use: ['raw-loader'],
-    })
-
-    // Handle 3D model files
-    config.module.rules.push({
-      test: /\.(stl|obj|gltf|glb)$/,
-      use: ['file-loader'],
-    })
-
-    if (!isServer) {
-      config.resolve.fallback = {
-        ...config.resolve.fallback,
-        fs: false,
-        path: false,
-        crypto: false,
-      }
+  webpack: (config: any) => {
+    config.resolve.fallback = {
+      ...config.resolve.fallback,
+      fs: false,
+      net: false,
+      tls: false,
     }
-
     return config
-  },
+  }
 }
 
 export default nextConfig;

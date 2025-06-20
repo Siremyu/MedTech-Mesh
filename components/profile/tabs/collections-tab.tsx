@@ -1,9 +1,21 @@
 'use client'
 
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import { FolderPlus, Clock, Star } from 'lucide-react'
 
-export function CollectionsTab() {
+interface CollectionsTabProps {
+  userId: string
+}
+
+export function CollectionsTab({ userId }: CollectionsTabProps) {
+  const [collections, setCollections] = useState([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    // Fetch collections logic here
+    setLoading(false)
+  }, [userId])
+
   return (
     <div className="flex flex-col items-center justify-center py-16 px-8 text-center">
       <div className="bg-gray-100 rounded-full p-6 mb-6">
@@ -35,6 +47,10 @@ export function CollectionsTab() {
           <h3 className="font-medium text-gray-800 mb-2">Share & Discover</h3>
           <p className="text-sm text-gray-500">Browse community collections</p>
         </div>
+      </div>
+
+      <div className="text-center py-8">
+        <p className="text-gray-500">Collections feature coming soon</p>
       </div>
     </div>
   )

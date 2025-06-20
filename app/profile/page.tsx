@@ -1,257 +1,43 @@
-// app/product/page.tsx
+// app/profile/page.tsx
 'use client'
 
-import { AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { Avatar } from '@radix-ui/react-avatar'
-import { Button } from '@/components/ui/button'
-import React, { useEffect, useState } from 'react'
-import { BiLike } from 'react-icons/bi';
-import { MdOutlineFileDownload } from 'react-icons/md';
-import { Navbar } from '@/components/navbar';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { useSelector } from 'react-redux'
-import { RootState } from '@/lib/store'
-import { ProfileSkeleton } from '@/components/skeletons/profile-skeleton'
+import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
-import { toast } from 'sonner'
-// Import all tab components
-import { HomeTab, HomeTabProps } from '@/components/profile/tabs/home-tab';
-import { CollectionsTab } from '@/components/profile/tabs/collections-tab';
-import { ModelsTab } from '@/components/profile/tabs/models-tab';
+import { useRouter } from 'next/navigation'
+import { User } from '@/types'
+import { ProfileHeader } from '@/components/profile/profile-header'
+import { ProfileTabs } from '@/components/profile/profile-tabs'
 
-// Import shared types
-import { UserProfile, ProfileModel, ProfileTabType } from '@/types/profile'
-
-// Import all tab components
-import { HomeTab } from '@/components/profile/tabs/home-tab';
-import { CollectionsTab } from '@/components/profile/tabs/collections-tab';
-import { ModelsTab } from '@/components/profile/tabs/models-tab';
-import { fetchModelDetail, handleModelAction } from '@/lib/api-client/unified'
+// Import all tab components (hapus duplikasi)
+import { HomeTab } from '@/components/profile/tabs/home-tab'
+import { CollectionsTab } from '@/components/profile/tabs/collections-tab'
+import { ModelsTab } from '@/components/profile/tabs/models-tab'
 
 export default function ProfilePage() {
-  const [activeTab, setActiveTab] = useState<ProfileTabType>('3d-models');
-  const [sortBy, setSortBy] = useState('recent');
-  const [profile, setProfile] = useState<UserProfile | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [userModels, setUserModels] = useState<ProfileModel[]>([])
-  const [isOwner, setIsOwner] = useState(false)
-  
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const { user } = useSelector((state: RootState) => state.auth)
   const { data: session, status } = useSession()
-
-  // Get userId from URL params, fallback to session user
-  const requestedUserId = searchParams.get('userId')
-  const profileUserId = requestedUserId || session?.user?.id
-
-  console.log('🎯 Profile Page Debug:')
-  console.log('Component rendered at:', new Date().toISOString())
-  console.log('Requested User ID:', requestedUserId)
-  console.log('Session User ID:', session?.user?.id)
-  console.log('Final Profile User ID:', profileUserId)
-  console.log('Session Status:', status)
-  console.log('Session:', session)
-  console.log('Redux User:', user)
+  const router = useRouter()
+  const [activeTab, setActiveTab] = useState('home')
+  const [user, setUser] = useState<User | null>(null)
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // Wait for session to be loaded if we're viewing own profile
     if (status === 'loading') {
-      console.log('⏳ Session still loading...')
+      // Session is loading, don't do anything yet
       return
     }
 
-    if (profileUserId) {
-      fetchProfileData()
-      loadUserModels()
-    } else if (!requestedUserId) {
-      // No specific user requested and no session - redirect to login
-      console.log('❌ No user ID and no session - need login')
-      setLoading(false)
-    } else {
+    if (status === 'unauthenticated') {
+      // User is not logged in, redirect to login page
+      router.push('/?login=true')
+    } else if (session?.user) {
+      // User is logged in, set the user state
+      setUser(session.user)
       setLoading(false)
     }
-  }, [profileUserId, status])
+  }, [session, status, router])
 
-  const fetchProfileData = async () => {
-    console.log('🔍 Frontend: Starting profile fetch...')
-    console.log('📝 Profile User ID:', profileUserId)
-    
-    try {
-      setLoading(true)
-      
-      const apiUrl = `/api/profile?userId=${profileUserId}`
-      
-      console.log('📡 Frontend: Fetching from:', apiUrl)
-      
-      const response = await fetch(apiUrl, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include'
-      })
-      
-      console.log('📡 Frontend: Response status:', response.status)
-      
-      if (response.ok) {
-        const data = await response.json()
-        console.log('✅ Frontend: Profile data received:', data)
-        
-        if (data.success && data.profile) {
-          setProfile(data.profile)
-          setIsOwner(data.isOwner)
-          
-          // Update Redux state if this is the current user
-          if (data.isOwner && data.profile) {
-            console.log('🔄 Updating Redux state with profile data')
-            // You might want to dispatch an action here to update Redux state
-          }
-          
-          console.log('✅ Profile state updated successfully')
-        } else {
-          throw new Error(data.error || 'Invalid response format')
-        }
-      } else {
-        const errorData = await response.json()
-        console.error('❌ Frontend: API error:', errorData)
-        
-        if (response.status === 404) {
-          if (errorData.debugInfo) {
-            console.log('🔍 Debug info:', errorData.debugInfo)
-            
-            if (errorData.debugInfo.totalUsersInDb === 0) {
-              toast.error('Database appears to be empty. Please create an account first.')
-            } else if (errorData.debugInfo.sessionUserId !== errorData.debugInfo.requestedUserId) {
-              toast.error('User profile not found. The user may have deleted their account.')
-            } else {
-              toast.error('Profile sync issue detected. Please try logging out and back in.')
-            }
-          } else {
-            toast.error('User profile not found.')
-          }
-        } else if (response.status === 401) {
-          toast.error('Please login to view this profile')
-          router.push('/?login=true')
-        } else {
-          toast.error(errorData.error || 'Failed to load profile')
-        }
-        
-        setProfile(null)
-        setIsOwner(false)
-      }
-    } catch (error: any) {
-      console.error('❌ Profile fetch failed:', error)
-      toast.error(error.message || 'Failed to load profile')
-      setProfile(null)
-      setIsOwner(false)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const loadUserModels = async () => {
-    if (!profileUserId) return
-    
-    console.log('🔍 Loading user models...')
-    try {
-      const response = await fetch(
-        `/api/profile/models?userId=${profileUserId}&sortBy=${sortBy}&limit=20`,
-        { credentials: 'include' }
-      )
-
-      if (response.ok) {
-        const data = await response.json()
-        console.log('✅ Models loaded:', data.models?.length || 0)
-        
-        const processedModels: ProfileModel[] = (data.models || [])
-          .filter((model: any) => ['published', 'verification', 'rejected'].includes(model.status))
-          .map((model: any): ProfileModel => ({
-            id: model.id,
-            title: model.title,
-            description: model.description || 'No description available',
-            category: model.category,
-            tags: model.tags,
-            thumbnailUrl: model.thumbnailUrl,
-            likes: model.likes || 0,
-            downloads: model.downloads || 0,
-            views: model.views || 0,
-            status: model.status,
-            createdAt: model.createdAt,
-            publishedAt: model.publishedAt,
-            rejectionReason: model.rejectionReason,
-            adminNotes: model.adminNotes
-          }))
-        
-        setUserModels(processedModels)
-      } else {
-        console.error('❌ Failed to load models:', response.status)
-        setUserModels([])
-      }
-    } catch (error) {
-      console.error('❌ Models fetch failed:', error)
-      setUserModels([])
-    }
-  }
-
-  const handleModelClick = (modelId: string) => {
-    console.log('🔗 Model clicked:', modelId)
-    router.push(`/product?id=${modelId}`);
-  };
-
-  // Tab definitions
-  const tabs = [
-    { id: 'home', label: 'Home' },
-    { id: 'collections', label: 'Collections' },
-    { id: '3d-models', label: '3d Models' },
-    { id: 'laser-cut', label: 'Laser & Cut Models' },
-    { id: 'posts', label: 'Posts' },
-    { id: 'ratings', label: 'Ratings' },
-  ] as const;
-
-  const [modelId, setModelId] = useState<string | null>(null)
-  const [product, setProduct] = useState<any>(null)
-  const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
-    const id = searchParams.get('id')
-    setModelId(id)
-    
-    if (id) {
-      fetchProductData()
-    } else {
-      setError('Model ID is required')
-      setLoading(false)
-    }
-  }, [searchParams])
-
-  const fetchProductData = async () => {
-    if (!modelId) {
-      setError('Model ID is required')
-      setLoading(false)
-      return
-    }
-
-    try {
-      setLoading(true)
-      setError(null)
-      
-      console.log('🔄 Fetching product detail for:', modelId)
-      
-      const response = await fetchModelDetail(modelId)
-      
-      if (response.success && response.data) {
-        setProduct(response.data)
-        console.log('✅ Product loaded successfully')
-      } else {
-        setError(response.error || 'Failed to load model')
-      }
-    } catch (error) {
-      console.error('❌ Error fetching product:', error)
-      setError('Failed to load model details. Please try again.')
-    } finally {
-      setLoading(false)
-    }
+  const handleTabChange = (tab: string) => {
+    setActiveTab(tab)
   }
 
   if (loading) {
@@ -265,7 +51,7 @@ export default function ProfilePage() {
     )
   }
 
-  if (!loading && !profile) {
+  if (!loading && !user) {
     return (
       <div className="min-h-screen bg-background">
         <Navbar />
@@ -273,24 +59,13 @@ export default function ProfilePage() {
           <div className="text-center max-w-md mx-auto p-6">
             <h2 className="text-2xl font-bold text-gray-900 mb-2">Profile Not Found</h2>
             <p className="text-gray-600 mb-4">
-              {requestedUserId 
-                ? 'The requested user profile could not be found. The user may have deleted their account or the URL may be incorrect.' 
-                : status === 'unauthenticated' 
-                  ? 'Please login to view your profile.' 
-                  : 'Your profile could not be loaded. Please try refreshing the page.'}
+              The requested user profile could not be found. The user may have deleted their account or the URL may be incorrect.
             </p>
             <div className="space-y-2">
               <Button onClick={() => router.push('/')}>Go Home</Button>
-              {status === 'unauthenticated' && (
-                <Button variant="outline" onClick={() => router.push('/?login=true')}>
-                  Login
-                </Button>
-              )}
-              {status === 'authenticated' && !requestedUserId && (
-                <Button variant="outline" onClick={() => window.location.reload()}>
-                  Refresh Page
-                </Button>
-              )}
+              <Button variant="outline" onClick={() => router.push('/?login=true')}>
+                Login
+              </Button>
             </div>
           </div>
         </div>

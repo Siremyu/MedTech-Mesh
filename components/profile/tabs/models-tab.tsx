@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useMemo } from 'react'
+import React, { useState, useMemo, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { ProfileModel } from '@/types/profile' // Use shared type
 import { ModelsHeader } from './components/models-header'
@@ -8,24 +8,35 @@ import { SubTabNavigation } from './components/sub-tab-navigation'
 import { PublishedModelsSection } from './components/model-status-sections'
 import { VerificationModelsSection } from './components/model-status-sections'
 import { RejectedModelsSection } from './components/model-status-sections'
+import { Model } from '@/types'
 
 interface ModelsTabProps {
-  models: ProfileModel[] // Fix: Use shared type
-  sortBy: string
-  onSortChange: (value: string) => void
-  onModelClick: (id: string) => void
-  isOwner: boolean
+  userId: string
 }
 
-export function ModelsTab({ 
-  models, 
-  sortBy, 
-  onSortChange, 
-  onModelClick, 
-  isOwner 
-}: ModelsTabProps) {
+export function ModelsTab({ userId }: ModelsTabProps) {
   const router = useRouter()
+  const [models, setModels] = useState<Model[]>([])
+  const [loading, setLoading] = useState(true)
   const [activeSubTab, setActiveSubTab] = useState<string>('published')
+
+  useEffect(() => {
+    fetchUserModels()
+  }, [userId])
+
+  const fetchUserModels = async () => {
+    try {
+      const response = await fetch(`/api/profile/models?userId=${userId}`)
+      if (response.ok) {
+        const data = await response.json()
+        setModels(data.models || [])
+      }
+    } catch (error) {
+      console.error('Error fetching models:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
 
   // Calculate counts for each status
   const statusCounts = useMemo(() => {
@@ -89,6 +100,18 @@ export function ModelsTab({
       default:
         return null
     }
+  }
+
+  if (loading) {
+    return <div className="text-center py-8">Loading models...</div>
+  }
+
+  if (models.length === 0) {
+    return (
+      <div className="text-center py-8">
+        <p className="text-gray-500">No models found</p>
+      </div>
+    )
   }
 
   return (
