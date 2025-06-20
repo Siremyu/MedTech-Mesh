@@ -15,6 +15,7 @@ import { Button } from '@/components/ui/button';
 import { Avatar } from '@radix-ui/react-avatar';
 import { AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ModelCardSkeleton } from '@/components/skeletons/model-card-skeleton';
+import { ModelGrid } from '@/components/model-grid';
 
 interface HomeModel {
   id: string
@@ -236,53 +237,37 @@ export default function Home() {
 
   EmptyState.displayName = 'EmptyState'
 
-  const ModelSection = React.memo(({ 
-    title, 
-    models, 
-    loading: sectionLoading 
-  }: { 
+  // Update ModelSection component untuk tidak transform data lagi
+  const ModelSection = React.memo(({ title, models, loading }: {
     title: string
-    models: HomeModel[]
-    loading: boolean 
-  }) => (
-    <div className="mb-12">
-      <h2 className="text-2xl font-bold mb-6">{title}</h2>
-      
-      {sectionLoading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {Array.from({ length: 8 }).map((_, i) => (
-            <ModelCardSkeleton key={`skeleton-${title}-${i}`} />
-          ))}
-        </div>
-      ) : models.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {models.map((model) => (
-            <ModelCard key={model.id} model={model} />
-          ))}
-        </div>
-      ) : (
-        <div className="text-center py-8">
-          <p className="text-muted-foreground">
-            {currentSearch 
-              ? `Tidak ada ${title.toLowerCase()} yang ditemukan untuk "${currentSearch}"`
-              : `Belum ada ${title.toLowerCase()}`
-            }
-          </p>
-        </div>
-      )}
-    </div>
-  ))
+    models: any[]
+    loading: boolean
+  }) => {
+    const handleModelClick = (model: any) => {
+      console.log('🎯 Navigating to model:', model.id)
+      router.push(`/product?id=${model.id}`)
+    }
+
+    return (
+      <ModelGrid 
+        title={title} 
+        models={models} // Langsung pass data dari API tanpa transform
+        onModelClick={handleModelClick}
+        loading={loading}
+      />
+    )
+  })
 
   ModelSection.displayName = 'ModelSection'
 
   const hasAnyModels = recentModels.length > 0 || popularModels.length > 0 || trendingModels.length > 0
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="h-screen bg-background">
       <Navbar />
       
-      <main className="pt-[80px] pb-[100px] px-[32px]">
-        <div className="max-w-7xl mx-auto">
+      <main className="pt-[80px] pb-[100px] px=[32px]">
+        <div className="mx-auto">
           {/* Show "Belum ada product" if database is empty */}
           {!loading && isEmptyDatabase ? (
             <EmptyState />

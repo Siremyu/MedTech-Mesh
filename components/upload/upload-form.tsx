@@ -152,6 +152,7 @@ export function UploadForm() {
       // Validate form
       const validation = validateForm()
       if (!validation.isValid) {
+        console.log('❌ Form validation failed:', validation.errors)
         validation.errors.forEach(error => toast.error(error))
         return
       }
@@ -192,11 +193,12 @@ export function UploadForm() {
         body: formData,
         credentials: 'include'
       })
-
+      
       const responseData = await response.json()
+      console.log('📥 API Response:', responseData)
       
       if (response.ok && responseData.success) {
-        toast.success('Model published successfully!')
+        toast.success(responseData.message || 'Model submitted for review!')
         
         // Reset form
         setFiles([])
@@ -213,8 +215,21 @@ export function UploadForm() {
           communityPost: true
         })
         
+        // Optionally redirect to profile
+        // router.push('/profile')
+        
       } else {
-        throw new Error(responseData.error || 'Failed to publish model')
+        // Handle API errors
+        const errorMessage = responseData.error || 'Failed to publish model'
+        const details = responseData.details
+        
+        console.error('❌ API Error:', { error: errorMessage, details })
+        
+        if (details && Array.isArray(details)) {
+          details.forEach(detail => toast.error(detail))
+        } else {
+          toast.error(errorMessage)
+        }
       }
 
     } catch (error: any) {

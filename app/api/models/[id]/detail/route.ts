@@ -164,13 +164,15 @@ export async function GET(
     // Calculate updated view count
     const updatedViews = model.views + (isPublished && !isOwner ? 1 : 0)
     
-    // Format response data untuk frontend
+    // Update the productData structure around line 173
     const productData = {
       id: model.id,
       title: model.title,
       description: model.description || '',
       category: model.category,
       tags: model.tags || [],
+      
+      // URLs
       coverImageUrl: model.coverImageUrl || null,
       modelFileUrl: model.modelFileUrl || null,
       
@@ -198,27 +200,32 @@ export async function GET(
         memberSince: model.author.createdAt.toISOString()
       },
       
-      // Timestamps
+      // Fix: Ensure timestamps are properly structured
+      timestamps: {
+        createdAt: model.createdAt.toISOString(),
+        updatedAt: model.updatedAt.toISOString(),
+        publishedAt: model.publishedAt ? model.publishedAt.toISOString() : null
+      },
+      
+      // Also add these fields at root level for backwards compatibility
       createdAt: model.createdAt.toISOString(),
-      updatedAt: model.updatedAt.toISOString(),
-      publishedAt: model.publishedAt?.toISOString() || null,
+      publishedAt: model.publishedAt ? model.publishedAt.toISOString() : null,
       
       // Related models
       relatedModels: relatedModels.map(related => ({
         id: related.id,
         title: related.title,
-        thumbnailUrl: related.coverImageUrl || null,
+        thumbnailUrl: related.coverImageUrl,
         likes: related.likes,
         downloads: related.downloads,
         views: related.views,
         author: {
-          name: related.author.displayName || 'Anonymous',
-          username: related.author.username || 'anonymous',
-          avatarUrl: related.author.avatarUrl || null
+          id: related.author.id,
+          name: related.author.displayName || 'Anonymous User'
         }
       })),
       
-      // User permissions
+      // Permissions
       permissions: {
         canEdit: isOwner,
         canDownload: isPublished && isPublic,

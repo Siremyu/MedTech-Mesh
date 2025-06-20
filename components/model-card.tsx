@@ -1,3 +1,5 @@
+'use client'
+
 import * as React from "react"
 import { Download, Heart } from "lucide-react"
 
@@ -9,6 +11,7 @@ interface ModelCardProps {
   imageUrl?: string
   onClick?: () => void
   onLike?: () => void
+  isLiking?: boolean
 }
 
 export function ModelCard({ 
@@ -18,11 +21,14 @@ export function ModelCard({
   likes, 
   imageUrl, 
   onClick, 
-  onLike 
+  onLike,
+  isLiking = false
 }: ModelCardProps) {
   const handleLikeClick = (e: React.MouseEvent) => {
     e.stopPropagation() // Prevent triggering onClick (navigation)
-    onLike?.()
+    if (!isLiking) {
+      onLike?.()
+    }
   }
 
   return (
@@ -33,18 +39,27 @@ export function ModelCard({
           <img 
             src={imageUrl} 
             alt={title}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+            onError={(e) => {
+              const target = e.target as HTMLImageElement
+              target.style.display = 'none'
+              if (target.parentElement) {
+                target.parentElement.innerHTML = '<div class="w-full h-full bg-[#C4C4C4] flex items-center justify-center"><span class="text-gray-500 text-sm">No Preview</span></div>'
+              }
+            }}
           />
         ) : (
-          <div className="w-full h-full bg-[#C4C4C4]" />
+          <div className="w-full h-full bg-[#C4C4C4] flex items-center justify-center">
+            <span className="text-gray-500 text-sm">No Preview</span>
+          </div>
         )}
       </div>
-      
+
       {/* Model Info */}
       <div className="flex items-start gap-3">
         {/* Author Avatar */}
         <div className="h-[45px] w-[45px] rounded-full bg-[#C4C4C4] flex-shrink-0" />
-        
+
         {/* Content */}
         <div className="flex-1 min-w-0">
           <h3 className="font-medium text-[20px] leading-tight mb-1">{title}</h3>
@@ -57,10 +72,12 @@ export function ModelCard({
               <span>{downloads}</span>
             </div>
             <div 
-              className="flex items-center gap-[6px] text-[14px] text-muted-foreground cursor-pointer hover:text-red-500 transition-colors"
+              className={`flex items-center gap-[6px] text-[14px] text-muted-foreground cursor-pointer hover:text-red-500 transition-colors ${
+                isLiking ? 'opacity-50 cursor-not-allowed' : ''
+              }`}
               onClick={handleLikeClick}
             >
-              <Heart className="h-[18px] w-[18px]" />
+              <Heart className={`h-[18px] w-[18px] ${isLiking ? 'animate-pulse' : ''}`} />
               <span>{likes}</span>
             </div>
           </div>

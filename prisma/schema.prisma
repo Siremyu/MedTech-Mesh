@@ -8,17 +8,18 @@ datasource db {
 }
 
 model User {
-  id            String  @id @default(cuid())
-  email         String  @unique
-  username      String? @unique
-  displayName   String?
-  password      String?
-  avatarUrl     String?
-  bio           String?
-  region        String?
-  gender        String?
-  emailVerified Boolean @default(false) // Ensure this is Boolean, not DateTime
-  role          Role    @default(USER) // Add this line
+  id             String  @id @default(cuid())
+  email          String  @unique
+  username       String? @unique
+  displayName    String?
+  password       String?
+  avatarUrl      String?
+  avatarPublicId String? // Add this for Cloudinary
+  bio            String?
+  region         String?
+  gender         String?
+  emailVerified  Boolean @default(false) // Ensure this is Boolean, not DateTime
+  role           Role    @default(USER) // Add this line
 
   // Timestamps
   createdAt DateTime @default(now())
@@ -26,8 +27,8 @@ model User {
 
   // Relations
   models      Model[]
-  likes       ModelLike[]
-  downloads   ModelDownload[]
+  likes       Like[]
+  downloads   Download[]
   accounts    Account[]
   sessions    Session[]
   collections Collection[]
@@ -74,29 +75,32 @@ model Model {
   coverImageUrl   String?
   modelFileUrl    String?
   galleryImages   String[]
-  status          String    @default("published") // published, verification, rejected
+  status          String    @default("verification") // "verification", "published", "rejected"
   visibility      String    @default("public") // public, private
   nsfwContent     Boolean   @default(false)
   license         String? // JSON string
+  communityPost   Boolean   @default(true)
+  authorId        String
+  author          User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
   likes           Int       @default(0)
   downloads       Int       @default(0)
   views           Int       @default(0)
-  authorId        String
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
   publishedAt     DateTime?
   rejectionReason String?
   adminNotes      String?
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  reviewedBy      String? // ID of admin who reviewed
+  reviewedAt      DateTime?
 
   // Relations
-  author         User            @relation(fields: [authorId], references: [id], onDelete: Cascade)
-  modelLikes     ModelLike[]
-  modelDownloads ModelDownload[]
+  likes_rel     Like[]
+  downloads_rel Download[]
 
   @@map("models")
 }
 
-model ModelLike {
+model Like {
   id        String   @id @default(cuid())
   userId    String
   modelId   String
@@ -106,10 +110,10 @@ model ModelLike {
   model Model @relation(fields: [modelId], references: [id], onDelete: Cascade)
 
   @@unique([userId, modelId])
-  @@map("model_likes")
+  @@map("likes")
 }
 
-model ModelDownload {
+model Download {
   id        String   @id @default(cuid())
   userId    String
   modelId   String
@@ -118,7 +122,7 @@ model ModelDownload {
   user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
   model Model @relation(fields: [modelId], references: [id], onDelete: Cascade)
 
-  @@map("model_downloads")
+  @@map("downloads")
 }
 
 model VerificationToken {

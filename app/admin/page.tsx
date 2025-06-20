@@ -142,22 +142,23 @@ export default function AdminPage() {
         })
       })
 
-      if (response.ok) {
-        const data = await response.json()
-        console.log('✅ Model approved successfully:', data)
-        
-        toast.success('Model approved and published successfully')
-        
-        // Refresh the models list
-        await fetchAdminModels()
-      } else {
+      // Check response status
+      if (!response.ok) {
         const errorData = await response.json()
-        console.error('❌ Failed to approve model:', errorData)
-        toast.error(errorData.error || 'Failed to approve model')
+        console.error('❌ Approval failed with status:', response.status, errorData)
+        throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`)
       }
+
+      const data = await response.json()
+      console.log('✅ Model approved successfully:', data)
+      
+      toast.success('Model approved and published successfully')
+      
+      // Refresh the models list
+      await fetchAdminModels()
     } catch (error: any) {
       console.error('❌ Model approval error:', error)
-      toast.error('Failed to approve model')
+      toast.error(error.message || 'Failed to approve model')
     } finally {
       setActionLoading(null)
     }

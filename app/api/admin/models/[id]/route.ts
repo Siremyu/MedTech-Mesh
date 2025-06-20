@@ -17,7 +17,7 @@ export async function PATCH(
   try {
     // Check authentication
     const session = await getServerSession(authOptions)
-    if (!session?.user) {
+    if (!session?.user?.id) {
       console.log('❌ No session found')
       return NextResponse.json(
         { error: 'Unauthorized' },
@@ -25,9 +25,13 @@ export async function PATCH(
       )
     }
 
-    // TODO: Implement proper admin role checking
-    // For now, checking if user email is admin
-    const isAdmin = session.user.email === 'admin@medmesh.com' // Replace with proper admin check
+    // Check admin privileges - UPDATE THIS to use proper role checking
+    const user = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { role: true, email: true }
+    })
+
+    const isAdmin = user?.role === 'ADMIN' || session.user.email === 'admin@medmesh.com'
     if (!isAdmin) {
       console.log('❌ User is not admin:', session.user.email)
       return NextResponse.json(
@@ -37,7 +41,17 @@ export async function PATCH(
     }
 
     // Parse request body
-    const body = await request.json()
+    let body
+    try {
+      body = await request.json()
+    } catch (parseError) {
+      console.error('❌ Failed to parse request body:', parseError)
+      return NextResponse.json(
+        { error: 'Invalid request body' },
+        { status: 400 }
+      )
+    }
+
     const { action, rejectionReason, adminNotes } = body
 
     console.log('📝 Admin action:', { action, modelId: params.id })
@@ -86,18 +100,36 @@ export async function PATCH(
 
     console.log('✅ Model found:', model.title)
 
+    // Check if model is in verification status
+    if (model.status !== 'verification') {
+      console.log('❌ Model is not in verification status:', model.status)
+      return NextResponse.json(
+        { error: `Model is in ${model.status} status and cannot be ${action}d` },
+        { status: 400 }
+      )
+    }
+
     // Update model status
+    const updateData: any = {
+      status: action === 'approve' ? 'published' : 'rejected',
+      publishedAt: action === 'approve' ? new Date() : null,
+      rejectionReason: action === 'reject' ? rejectionReason?.trim() : null,
+      adminNotes: adminNotes?.trim() || null,
+      reviewedBy: session.user.id,
+      reviewedAt: new Date(),
+      updatedAt: new Date()
+    }
+
+    // Ensure we don't set undefined values
+    Object.keys(updateData).forEach(key => {
+      if (updateData[key] === undefined) {
+        delete updateData[key]
+      }
+    })
+
     const updatedModel = await prisma.model.update({
       where: { id: params.id },
-      data: {
-        status: action === 'approve' ? 'published' : 'rejected',
-        publishedAt: action === 'approve' ? new Date() : null,
-        rejectionReason: action === 'reject' ? rejectionReason?.trim() : null,
-        adminNotes: adminNotes?.trim() || null,
-        reviewedBy: session.user.id,
-        reviewedAt: new Date(),
-        updatedAt: new Date()
-      },
+      data: updateData,
       include: {
         author: {
           select: {
@@ -108,11 +140,10 @@ export async function PATCH(
         }
       }
     })
-
+    
     console.log(`✅ Model ${action}ed successfully:`, updatedModel.id)
 
     // TODO: Send notification email to the author
-    // You can implement email notification here
     const notificationMessage = action === 'approve' 
       ? `Your model "${model.title}" has been approved and is now published!`
       : `Your model "${model.title}" was not approved. Reason: ${rejectionReason}`
@@ -139,6 +170,23 @@ export async function PATCH(
   } catch (error: any) {
     console.error('❌ Admin Model Action API Error:', error)
     
+    // Handle specific Prisma errors
+    if (error.code === 'P2002') {
+      return NextResponse.json({
+        success: false,
+        error: 'Duplicate constraint violation',
+        details: 'This operation conflicts with existing data'
+      }, { status: 409 })
+    }
+
+    if (error.code === 'P2025') {
+      return NextResponse.json({
+        success: false,
+        error: 'Model not found',
+        details: 'The model you are trying to update does not exist'
+      }, { status: 404 })
+    }
+
     return NextResponse.json({
       success: false,
       error: 'Failed to update model status',
@@ -171,7 +219,12 @@ export async function GET(
     }
 
     // Check admin privileges
-    const isAdmin = session.user.email === 'admin@medmesh.com' // Replace with proper admin check
+    const user = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { role: true, email: true }
+    })
+
+    const isAdmin = user?.role === 'ADMIN' || session.user.email === 'admin@medmesh.com'
     if (!isAdmin) {
       return NextResponse.json(
         { error: 'Forbidden - Admin access required' },

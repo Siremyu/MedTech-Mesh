@@ -163,24 +163,24 @@ export async function GET(request: NextRequest) {
       ])
       
       // Format response
-      const formattedModels = models.map(model => ({
+      const transformedModels = models.map(model => ({
         id: model.id,
-        title: model.title || 'Untitled Product',
-        description: model.description || '',
-        category: model.category || 'General',
-        tags: Array.isArray(model.tags) ? model.tags : [],
-        thumbnailUrl: model.coverImageUrl || null,
-        likes: Number(model.likes) || 0,
-        downloads: Number(model.downloads) || 0,
-        views: Number(model.views) || 0,
+        title: model.title,
+        description: model.description,
+        category: model.category,
+        thumbnailUrl: model.coverImageUrl,
+        coverImageUrl: model.coverImageUrl,
+        likes: model.likes,
+        downloads: model.downloads,
+        views: model.views,
+        createdAt: model.createdAt.toISOString(),
+        // Author sebagai object (jangan di-flatten)
         author: {
           id: model.author.id,
-          name: model.author.displayName || 'Anonymous User',
-          username: model.author.username || `user_${model.author.id.slice(0, 8)}`,
-          avatarUrl: model.author.avatarUrl || null
-        },
-        publishedAt: model.publishedAt?.toISOString() || model.createdAt.toISOString(),
-        createdAt: model.createdAt.toISOString()
+          name: model.author.displayName || model.author.username || 'Anonymous User',
+          username: model.author.username,
+          avatarUrl: model.author.avatarUrl
+        }
       }))
       
       const totalPages = Math.ceil(totalCount / limit)
@@ -189,7 +189,7 @@ export async function GET(request: NextRequest) {
         success: true,
         message: `Successfully fetched ${category} products`,
         data: {
-          models: formattedModels,
+          models: transformedModels,
           category,
           search: search || null,
           pagination: {
