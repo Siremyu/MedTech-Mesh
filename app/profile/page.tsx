@@ -14,6 +14,10 @@ import { RootState } from '@/lib/store'
 import { ProfileSkeleton } from '@/components/skeletons/profile-skeleton'
 import { useSession } from 'next-auth/react'
 import { toast } from 'sonner'
+// Import all tab components
+import { HomeTab, HomeTabProps } from '@/components/profile/tabs/home-tab';
+import { CollectionsTab } from '@/components/profile/tabs/collections-tab';
+import { ModelsTab } from '@/components/profile/tabs/models-tab';
 
 // Import shared types
 import { UserProfile, ProfileModel, ProfileTabType } from '@/types/profile'
@@ -355,7 +359,7 @@ export default function ProfilePage() {
                 isOwner={isOwner} 
                 onModelClick={handleModelClick}
                 sortBy={sortBy}
-                onSortChange={setSortBy}
+                onSortChange={setSortBy}  
               />
             )}
             {/* Add other tab components as needed */}

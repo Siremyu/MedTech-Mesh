@@ -4,6 +4,21 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 
+// Mendefinisikan tipe untuk kejelasan dan memperbaiki galat 'any' implisit
+interface UserModelStats {
+  id: string;
+  status: string;
+  likes: number | null;
+  downloads: number | null;
+}
+
+interface UserForFilter {
+  id: string;
+  email: string | null;
+  username: string | null;
+}
+
+
 export async function GET(request: NextRequest) {
   try {
     console.log('🔍 Profile API called')
@@ -78,7 +93,7 @@ export async function GET(request: NextRequest) {
           requestedUserId: targetUserId,
           sessionUserId: session?.user?.id,
           totalUsersInDb: allUsers.length,
-          similarUsersCount: allUsers.filter(u => 
+          similarUsersCount: allUsers.filter((u: UserForFilter) =>
             u.email?.includes(targetUserId) || 
             u.username?.includes(targetUserId) || 
             u.id.includes(targetUserId)
@@ -98,11 +113,11 @@ export async function GET(request: NextRequest) {
     // Calculate statistics
     const stats = {
       totalModels: user.models.length,
-      publishedModels: user.models.filter(m => m.status === 'published').length,
-      pendingModels: user.models.filter(m => m.status === 'verification').length,
-      rejectedModels: user.models.filter(m => m.status === 'rejected').length,
-      totalLikes: user.models.reduce((sum, model) => sum + (model.likes || 0), 0),
-      totalDownloads: user.models.reduce((sum, model) => sum + (model.downloads || 0), 0),
+      publishedModels: user.models.filter((m: UserModelStats) => m.status === 'published').length,
+      pendingModels: user.models.filter((m: UserModelStats) => m.status === 'verification').length,
+      rejectedModels: user.models.filter((m: UserModelStats) => m.status === 'rejected').length,
+      totalLikes: user.models.reduce((sum: number, model: UserModelStats) => sum + (model.likes || 0), 0),
+      totalDownloads: user.models.reduce((sum: number, model: UserModelStats) => sum + (model.downloads || 0), 0),
       followers: 0, // TODO: Implement followers system
       following: 0, // TODO: Implement following system
     }
@@ -133,10 +148,11 @@ export async function GET(request: NextRequest) {
     
   } catch (error) {
     console.error('❌ Profile API error:', error)
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
     return NextResponse.json({
       success: false,
       error: 'Internal server error',
-      details: error instanceof Error ? error.message : 'Unknown error'
+      details: errorMessage
     }, { status: 500 })
   }
 }
