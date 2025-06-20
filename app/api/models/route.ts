@@ -180,10 +180,60 @@ export async function GET(request: NextRequest) {
 
     const total = await prisma.model.count({ where })
 
+    const formattedModels = models.map((model: {
+      id: string;
+      title: string;
+      description: string | null;
+      category: string;
+      tags: string[];
+      coverImageUrl: string | null;
+      status: string;
+      visibility: string;
+      nsfwContent: boolean;
+      likes: number;
+      downloads: number;
+      views: number;
+      createdAt: Date;
+      updatedAt: Date;
+      rejectionReason: string | null;
+      adminNotes: string | null;
+      author: {
+        id: string;
+        displayName: string | null;
+        username: string | null;
+        email: string;
+        avatarUrl: string | null;
+      };
+    }) => ({
+      id: model.id,
+      title: model.title,
+      description: model.description,
+      category: model.category,
+      tags: model.tags,
+      coverImageUrl: model.coverImageUrl,
+      status: model.status,
+      visibility: model.visibility,
+      nsfwContent: model.nsfwContent,
+      likes: model.likes,
+      downloads: model.downloads,
+      views: model.views,
+      createdAt: model.createdAt,
+      updatedAt: model.updatedAt,
+      rejectionReason: model.rejectionReason,
+      adminNotes: model.adminNotes,
+      author: {
+        id: model.author.id,
+        displayName: model.author.displayName,
+        username: model.author.username,
+        email: model.author.email,
+        avatarUrl: model.author.avatarUrl
+      }
+    }))
+
     console.log(`✅ Models fetched: ${models.length}/${total} total`)
 
     return NextResponse.json({
-      models,
+      models: formattedModels,
       pagination: {
         page,
         limit,

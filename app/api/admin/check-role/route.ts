@@ -49,3 +49,28 @@ export async function GET(request: NextRequest) {
     }, { status: 500 })
   }
 }
+
+// Related models
+relatedModels: relatedModels.map((related: {
+  id: string;
+  title: string;
+  coverImageUrl: string | null;
+  likes: number;
+  downloads: number;
+  views: number;
+  author: {
+    id: string;
+    displayName: string | null;
+  };
+}) => ({
+  id: related.id,
+  title: related.title,
+  thumbnailUrl: related.coverImageUrl,
+  likes: related.likes,
+  downloads: related.downloads,
+  views: related.views,
+  author: {
+    id: related.author.id || 'unknown',
+    name: related.author.displayName || 'Anonymous User'
+  }
+}))

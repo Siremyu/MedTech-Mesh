@@ -118,6 +118,7 @@ export async function GET(
         coverImageUrl: true,
         likes: true,
         downloads: true,
+        views: true,
         author: {
           select: {
             displayName: true,
@@ -169,13 +170,29 @@ export async function GET(
         updatedAt: model.updatedAt.toISOString(),
         publishedAt: model.publishedAt?.toISOString()
       },
-      relatedModels: relatedModels.map(related => ({
+      // Related models
+      relatedModels: relatedModels.map((related: {
+        id: string;
+        title: string;
+        coverImageUrl: string | null;
+        likes: number;
+        downloads: number;
+        views: number;
+        author: {
+          id: string;
+          displayName: string | null;
+        };
+      }) => ({
         id: related.id,
         title: related.title,
-        coverImageUrl: related.coverImageUrl,
+        thumbnailUrl: related.coverImageUrl,
         likes: related.likes,
         downloads: related.downloads,
-        author: related.author.displayName
+        views: related.views,
+        author: {
+          id: related.author.id || 'unknown',
+          name: related.author.displayName || 'Anonymous User'
+        }
       })),
       permissions: {
         canEdit: isOwner,

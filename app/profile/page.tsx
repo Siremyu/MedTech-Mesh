@@ -1,4 +1,4 @@
-// app/profile/page.tsx
+// app/product/page.tsx
 'use client'
 
 import { AvatarFallback, AvatarImage } from '@/components/ui/avatar'
@@ -26,6 +26,7 @@ import { UserProfile, ProfileModel, ProfileTabType } from '@/types/profile'
 import { HomeTab } from '@/components/profile/tabs/home-tab';
 import { CollectionsTab } from '@/components/profile/tabs/collections-tab';
 import { ModelsTab } from '@/components/profile/tabs/models-tab';
+import { fetchModelDetail, handleModelAction } from '@/lib/api-client/unified'
 
 export default function ProfilePage() {
   const [activeTab, setActiveTab] = useState<ProfileTabType>('3d-models');
@@ -207,6 +208,51 @@ export default function ProfilePage() {
     { id: 'posts', label: 'Posts' },
     { id: 'ratings', label: 'Ratings' },
   ] as const;
+
+  const [modelId, setModelId] = useState<string | null>(null)
+  const [product, setProduct] = useState<any>(null)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    const id = searchParams.get('id')
+    setModelId(id)
+    
+    if (id) {
+      fetchProductData()
+    } else {
+      setError('Model ID is required')
+      setLoading(false)
+    }
+  }, [searchParams])
+
+  const fetchProductData = async () => {
+    if (!modelId) {
+      setError('Model ID is required')
+      setLoading(false)
+      return
+    }
+
+    try {
+      setLoading(true)
+      setError(null)
+      
+      console.log('🔄 Fetching product detail for:', modelId)
+      
+      const response = await fetchModelDetail(modelId)
+      
+      if (response.success && response.data) {
+        setProduct(response.data)
+        console.log('✅ Product loaded successfully')
+      } else {
+        setError(response.error || 'Failed to load model')
+      }
+    } catch (error) {
+      console.error('❌ Error fetching product:', error)
+      setError('Failed to load model details. Please try again.')
+    } finally {
+      setLoading(false)
+    }
+  }
 
   if (loading) {
     return (
