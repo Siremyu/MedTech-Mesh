@@ -4,6 +4,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
+import { Prisma } from '@prisma/client'
 
 // Validation schema for actions
 const actionSchema = z.object({
@@ -121,7 +122,7 @@ export async function POST(
     let result: any = {}
 
     // Process action using transaction for data consistency
-    await prisma.$transaction(async (tx) => {
+    await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       switch (action) {
         case 'like':
           console.log('❤️ Processing like action...')

@@ -129,6 +129,7 @@ export async function GET(
         views: true,
         author: {
           select: {
+            id: true,
             displayName: true,
             username: true,
             avatarUrl: true
@@ -212,7 +213,7 @@ export async function GET(
       publishedAt: model.publishedAt ? model.publishedAt.toISOString() : null,
       
       // Related models
-      relatedModels: relatedModels.map(related => ({
+      relatedModels: relatedModels.map((related) => ({
         id: related.id,
         title: related.title,
         thumbnailUrl: related.coverImageUrl,
@@ -220,7 +221,7 @@ export async function GET(
         downloads: related.downloads,
         views: related.views,
         author: {
-          id: related.author.id,
+          id: related.author.id || 'unknown',
           name: related.author.displayName || 'Anonymous User'
         }
       })),
